@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">FitLog</string>
+
+    <!-- 画面名 -->
+    <string name="nav_home">ホーム</string>
+    <string name="nav_weight">体重</string>
+    <string name="nav_strength">筋トレ</string>
+    <string name="nav_running">ラン</string>
+    <string name="nav_meal">食事</string>
+    <string name="nav_data">データ</string>
+</resources>

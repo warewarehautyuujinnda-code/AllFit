@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose を使うため、ベースは Material3 の NoActionBar テーマにする -->
+    <style name="Theme.FitLog" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

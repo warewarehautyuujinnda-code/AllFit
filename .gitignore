@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ローカル設定（SDK パスなど。端末固有のため共有しない）
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログ・鍵
+*.log
+*.keystore
+*.jks
