@@ -3,11 +3,10 @@ package com.hinata.fitlog.ui.strength
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -53,109 +52,127 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        Column(
+        // 入力欄が5つあり、ソフトキーボード表示時は画面に収まらないため画面全体をスクロール可能にする。
+        // 履歴の遅延読み込みを保つため、入力フォームと履歴を1つの LazyColumn にまとめている
+        // （Column に verticalScroll を付けて LazyColumn を入れ子にすると測定時に例外になる）。
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
                 .padding(16.dp),
         ) {
-            Text("筋トレの記録", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.width(0.dp))
-
-            DatePickerField(
-                value = date,
-                onValueChange = { date = it },
-                modifier = Modifier.padding(top = 12.dp),
-            )
-
-            OutlinedTextField(
-                value = ex,
-                onValueChange = { ex = it },
-                label = { Text("種目 ※必須") },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-            )
-
-            OutlinedTextField(
-                value = weight,
-                onValueChange = { weight = it },
-                label = { Text("重量 (kg) ※任意") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-            )
-
-            OutlinedTextField(
-                value = reps,
-                onValueChange = { reps = it },
-                label = { Text("回数 ※任意") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-            )
-
-            OutlinedTextField(
-                value = sets,
-                onValueChange = { sets = it },
-                label = { Text("セット数 ※任意") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-            )
-
-            Button(
-                onClick = {
-                    val ok = viewModel.save(date, ex, weight, reps, sets)
-                    scope.launch {
-                        if (ok) {
-                            ex = ""
-                            weight = ""
-                            reps = ""
-                            sets = ""
-                            snackbarHostState.showSnackbar("保存しました")
-                        } else {
-                            snackbarHostState.showSnackbar(
-                                "種目を入力し、重量・回数・セット数は数値で入力してください"
-                            )
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-            ) {
-                Text("保存")
+            item {
+                Text("筋トレの記録", style = MaterialTheme.typography.titleLarge)
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            item {
+                DatePickerField(
+                    value = date,
+                    onValueChange = { date = it },
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
 
-            Text(
-                "記録一覧（${items.size}件）",
-                style = MaterialTheme.typography.titleMedium,
-            )
+            item {
+                OutlinedTextField(
+                    value = ex,
+                    onValueChange = { ex = it },
+                    label = { Text("種目 ※必須") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value = weight,
+                    onValueChange = { weight = it },
+                    label = { Text("重量 (kg) ※任意") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value = reps,
+                    onValueChange = { reps = it },
+                    label = { Text("回数 ※任意") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value = sets,
+                    onValueChange = { sets = it },
+                    label = { Text("セット数 ※任意") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                )
+            }
+
+            item {
+                Button(
+                    onClick = {
+                        val ok = viewModel.save(date, ex, weight, reps, sets)
+                        scope.launch {
+                            if (ok) {
+                                ex = ""
+                                weight = ""
+                                reps = ""
+                                sets = ""
+                                snackbarHostState.showSnackbar("保存しました")
+                            } else {
+                                snackbarHostState.showSnackbar(
+                                    "種目を入力し、重量・回数・セット数は数値で入力してください"
+                                )
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                ) {
+                    Text("保存")
+                }
+            }
+
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            }
+
+            item {
+                Text(
+                    "記録一覧（${items.size}件）",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
 
             if (items.isEmpty()) {
-                Text(
-                    "まだ記録がありません",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+                item {
+                    Text(
+                        "まだ記録がありません",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
             } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 8.dp),
-                ) {
-                    items(items, key = { it.id }) { item ->
-                        StrengthRow(item)
-                    }
+                items(items, key = { it.id }) { item ->
+                    StrengthRow(item, modifier = Modifier.padding(top = 8.dp))
                 }
             }
         }
@@ -163,8 +180,8 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
 }
 
 @Composable
-private fun StrengthRow(item: StrengthEntity) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun StrengthRow(item: StrengthEntity, modifier: Modifier = Modifier) {
+    Card(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
