@@ -38,7 +38,9 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
         if (date.isBlank()) return false
 
         val dist = distText.trim().toDoubleOrNull() ?: return false
-        if (dist <= 0.0) return false
+        // toDoubleOrNull() は "NaN" / "Infinity" も解析するため、比較だけでは弾けない。
+        // 不正な値をDBに残すと履歴の表示側で毎回問題になるので、保存時点で拒否する
+        if (!dist.isFinite() || dist <= 0.0) return false
 
         val min = parseOptionalDouble(minText) ?: return false
         val kcal = parseOptionalInt(kcalText) ?: return false
@@ -64,7 +66,7 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return Parsed(null)
         val value = trimmed.toDoubleOrNull() ?: return null
-        return if (value > 0.0) Parsed(value) else null
+        return if (value.isFinite() && value > 0.0) Parsed(value) else null
     }
 
     /** 未入力なら null 値、正の整数ならその値、それ以外（数値でない・0以下）は解析失敗として null を返す */
@@ -78,10 +80,15 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         /**
          * ペース（分/km）を 5'30" 形式で返す。
-         * 距離・時間のどちらかが未入力または0以下の場合は計算できないため null を返す。
+         * 距離・時間のどちらかが未入力・0以下・非有限値の場合は計算できないため null を返す。
          */
         fun formatPace(dist: Double?, min: Double?): String? {
-            if (dist == null || min == null || dist <= 0.0 || min <= 0.0) return null
+            if (dist == null || min == null) return null
+            // 入力中の文字列から直接呼ばれるため保存時の検証を通っていない。
+            // NaN は大小比較がすべて false になり 0以下チェックをすり抜けるうえ、
+            // roundToInt() に渡すと例外になるので isFinite() で先に弾く
+            if (!dist.isFinite() || !min.isFinite()) return null
+            if (dist <= 0.0 || min <= 0.0) return null
             // 秒に丸めてから分と秒に分けることで、59.6秒が「0'60"」になるのを防ぐ
             val totalSeconds = (min * 60.0 / dist).roundToInt()
             return String.format(Locale.US, "%d'%02d\"", totalSeconds / 60, totalSeconds % 60)
