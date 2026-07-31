@@ -38,9 +38,6 @@ fun PlaceholderScreen(title: String, description: String) {
 fun HomeScreen() = PlaceholderScreen("ホーム", "当日サマリー・体重推移グラフ・最近の記録（FR-06〜08）を表示予定")
 
 @Composable
-fun RunningScreen() = PlaceholderScreen("ラン", "ランニングの入力と履歴（FR-03, FR-09）を実装予定")
-
-@Composable
 fun MealScreen() = PlaceholderScreen("食事", "食事の入力・当日合計・履歴（FR-04, FR-09, FR-10）を実装予定")
 
 @Composable
