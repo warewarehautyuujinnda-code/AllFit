@@ -41,7 +41,4 @@ fun HomeScreen() = PlaceholderScreen("ホーム", "当日サマリー・体重�
 fun RunningScreen() = PlaceholderScreen("ラン", "ランニングの入力と履歴（FR-03, FR-09）を実装予定")
 
 @Composable
-fun MealScreen() = PlaceholderScreen("食事", "食事の入力・当日合計・履歴（FR-04, FR-09, FR-10）を実装予定")
-
-@Composable
 fun DataScreen() = PlaceholderScreen("データ", "書き出し・読み込み・統計・全削除（FR-11〜14）を実装予定")
