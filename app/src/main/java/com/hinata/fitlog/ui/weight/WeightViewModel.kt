@@ -34,4 +34,11 @@ class WeightViewModel(app: Application) : AndroidViewModel(app) {
         }
         return true
     }
+
+    /** 1件削除する（FR-05）。[items] は Flow のため削除は一覧に自動で反映される */
+    fun delete(item: WeightEntity) {
+        viewModelScope.launch {
+            dao.deleteById(item.id)
+        }
+    }
 }

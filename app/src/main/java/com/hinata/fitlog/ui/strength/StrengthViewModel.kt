@@ -54,6 +54,13 @@ class StrengthViewModel(app: Application) : AndroidViewModel(app) {
         return true
     }
 
+    /** 1件削除する（FR-05）。[items] は Flow のため削除は一覧に自動で反映される */
+    fun delete(item: StrengthEntity) {
+        viewModelScope.launch {
+            dao.deleteById(item.id)
+        }
+    }
+
     /** 任意の数値項目の解析結果。解析できなかった場合と「未入力（null）」を区別するための入れ物 */
     private class Parsed<T>(val value: T?)
 

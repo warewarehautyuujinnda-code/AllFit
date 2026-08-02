@@ -35,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hinata.fitlog.data.entity.WeightEntity
 import com.hinata.fitlog.ui.common.DatePickerField
 import com.hinata.fitlog.ui.common.DateUtil
+import com.hinata.fitlog.ui.common.DeleteRecordButton
 import kotlinx.coroutines.launch
 
 @Composable
@@ -127,7 +128,15 @@ fun WeightScreen(viewModel: WeightViewModel = viewModel()) {
                     modifier = Modifier.padding(top = 8.dp),
                 ) {
                     items(items, key = { it.id }) { item ->
-                        WeightRow(item)
+                        WeightRow(
+                            item = item,
+                            onDelete = {
+                                viewModel.delete(item)
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("削除しました")
+                                }
+                            },
+                        )
                     }
                 }
             }
@@ -136,23 +145,30 @@ fun WeightScreen(viewModel: WeightViewModel = viewModel()) {
 }
 
 @Composable
-private fun WeightRow(item: WeightEntity) {
+private fun WeightRow(item: WeightEntity, onDelete: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                // 削除ボタン（IconButton）の最小タップ領域が48dpあるため、右側と上下の余白は詰めている
+                .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(item.date, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                buildString {
-                    append("${item.weight} kg")
-                    item.fat?.let { append("  /  ${it} %") }
-                },
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    buildString {
+                        append("${item.weight} kg")
+                        item.fat?.let { append("  /  ${it} %") }
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                DeleteRecordButton(
+                    label = "${item.date} の体重の記録",
+                    onConfirm = onDelete,
+                )
+            }
         }
     }
 }

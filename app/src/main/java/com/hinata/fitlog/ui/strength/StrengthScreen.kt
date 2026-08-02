@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hinata.fitlog.data.entity.StrengthEntity
 import com.hinata.fitlog.ui.common.DatePickerField
 import com.hinata.fitlog.ui.common.DateUtil
+import com.hinata.fitlog.ui.common.DeleteRecordButton
 import kotlinx.coroutines.launch
 
 @Composable
@@ -172,7 +173,16 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
                 }
             } else {
                 items(items, key = { it.id }) { item ->
-                    StrengthRow(item, modifier = Modifier.padding(top = 8.dp))
+                    StrengthRow(
+                        item = item,
+                        onDelete = {
+                            viewModel.delete(item)
+                            scope.launch {
+                                snackbarHostState.showSnackbar("削除しました")
+                            }
+                        },
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                 }
             }
         }
@@ -180,12 +190,17 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
 }
 
 @Composable
-private fun StrengthRow(item: StrengthEntity, modifier: Modifier = Modifier) {
+private fun StrengthRow(
+    item: StrengthEntity,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                // 削除ボタン（IconButton）の最小タップ領域が48dpあるため、右側と上下の余白は詰めている
+                .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -193,14 +208,20 @@ private fun StrengthRow(item: StrengthEntity, modifier: Modifier = Modifier) {
                 Text(item.date, style = MaterialTheme.typography.bodySmall)
                 Text(item.ex, style = MaterialTheme.typography.bodyLarge)
             }
-            // 重量・回数・セット数はすべて任意のため、入力があるものだけを並べる
-            val detail = listOfNotNull(
-                item.weight?.let { "${it} kg" },
-                item.reps?.let { "${it} 回" },
-                item.sets?.let { "${it} セット" },
-            ).joinToString("  /  ")
-            if (detail.isNotEmpty()) {
-                Text(detail, style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // 重量・回数・セット数はすべて任意のため、入力があるものだけを並べる
+                val detail = listOfNotNull(
+                    item.weight?.let { "${it} kg" },
+                    item.reps?.let { "${it} 回" },
+                    item.sets?.let { "${it} セット" },
+                ).joinToString("  /  ")
+                if (detail.isNotEmpty()) {
+                    Text(detail, style = MaterialTheme.typography.bodyMedium)
+                }
+                DeleteRecordButton(
+                    label = "${item.date} の「${item.ex}」の記録",
+                    onConfirm = onDelete,
+                )
             }
         }
     }
