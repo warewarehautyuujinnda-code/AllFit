@@ -15,10 +15,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.hinata.fitlog.ui.navigation.Destination
+import com.hinata.fitlog.ui.running.RunningScreen
 import com.hinata.fitlog.ui.screens.DataScreen
 import com.hinata.fitlog.ui.screens.HomeScreen
 import com.hinata.fitlog.ui.screens.MealScreen
-import com.hinata.fitlog.ui.screens.RunningScreen
 import com.hinata.fitlog.ui.strength.StrengthScreen
 import com.hinata.fitlog.ui.weight.WeightScreen
 
