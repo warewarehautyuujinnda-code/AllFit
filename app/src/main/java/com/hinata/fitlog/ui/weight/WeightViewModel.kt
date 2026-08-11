@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.WeightEntity
+import com.hinata.fitlog.domain.parseOptionalDouble
+import com.hinata.fitlog.domain.parseRequiredDouble
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -25,13 +27,19 @@ class WeightViewModel(app: Application) : AndroidViewModel(app) {
      * @return 入力が正しく保存できたら true
      */
     fun save(date: String, weightText: String, fatText: String): Boolean {
-        val weight = weightText.trim().toDoubleOrNull() ?: return false
-        if (date.isBlank() || weight <= 0.0) return false
-        val fat = fatText.trim().takeIf { it.isNotEmpty() }?.toDoubleOrNull()
+        if (date.isBlank()) return false
+        val weight = parseRequiredDouble(weightText) ?: return false
+        // 体脂肪率は任意。入力があるのに数値として読めない場合は黙って捨てずに保存を失敗させる
+        val fat = parseOptionalDouble(fatText) ?: return false
 
         viewModelScope.launch {
-            dao.upsert(WeightEntity(date = date, weight = weight, fat = fat))
+            dao.upsert(WeightEntity(date = date, weight = weight, fat = fat.value))
         }
         return true
+    }
+
+    /** 記録を1件削除する（FR-05） */
+    fun delete(item: WeightEntity) {
+        viewModelScope.launch { dao.deleteById(item.id) }
     }
 }

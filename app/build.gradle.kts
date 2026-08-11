@@ -66,4 +66,7 @@ dependencies {
 
     // JSON（書き出し・読み込み用）
     implementation(libs.kotlinx.serialization.json)
+
+    // 単体テスト。domain パッケージは Android に依存しないため JVM 上でそのまま動かせる
+    testImplementation(libs.junit)
 }
