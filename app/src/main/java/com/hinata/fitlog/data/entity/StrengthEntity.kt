@@ -3,10 +3,12 @@ package com.hinata.fitlog.data.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.UUID
+import kotlinx.serialization.Serializable
 
 /**
  * 筋トレの記録（FR-02 / データ要件 8.2）
  */
+@Serializable
 @Entity(tableName = "strength")
 data class StrengthEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
