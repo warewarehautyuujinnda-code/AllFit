@@ -12,29 +12,30 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hinata.fitlog.data.entity.WeightEntity
+import com.hinata.fitlog.domain.formatAmount
 import com.hinata.fitlog.ui.common.DatePickerField
 import com.hinata.fitlog.ui.common.DateUtil
+import com.hinata.fitlog.ui.common.RecordCard
 import kotlinx.coroutines.launch
 
 @Composable
@@ -127,7 +128,7 @@ fun WeightScreen(viewModel: WeightViewModel = viewModel()) {
                     modifier = Modifier.padding(top = 8.dp),
                 ) {
                     items(items, key = { it.id }) { item ->
-                        WeightRow(item)
+                        WeightRow(item = item, onDelete = { viewModel.delete(item) })
                     }
                 }
             }
@@ -136,20 +137,26 @@ fun WeightScreen(viewModel: WeightViewModel = viewModel()) {
 }
 
 @Composable
-private fun WeightRow(item: WeightEntity) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun WeightRow(
+    item: WeightEntity,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    RecordCard(
+        summary = "${item.date}　${formatAmount(item.weight)} kg",
+        onDelete = onDelete,
+        modifier = modifier,
+    ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(item.date, style = MaterialTheme.typography.bodyMedium)
             Text(
                 buildString {
-                    append("${item.weight} kg")
-                    item.fat?.let { append("  /  ${it} %") }
+                    append("${formatAmount(item.weight)} kg")
+                    item.fat?.let { append("  /  ${formatAmount(it)} %") }
                 },
                 style = MaterialTheme.typography.bodyLarge,
             )
