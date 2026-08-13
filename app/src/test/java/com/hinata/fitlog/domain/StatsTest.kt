@@ -2,13 +2,12 @@ package com.hinata.fitlog.domain
 
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.RunningEntity
-import com.hinata.fitlog.data.entity.StrengthEntity
 import com.hinata.fitlog.data.entity.WeightEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** ホームの集計（FR-06〜08）と食事の当日合計（FR-10） */
+/** ホームの集計（FR-06〜07）と食事の当日合計（FR-10） */
 class StatsTest {
 
     private val today = "2026-08-11"
@@ -17,12 +16,6 @@ class StatsTest {
     private val weights = listOf(
         WeightEntity(id = "w2", date = "2026-08-11", weight = 70.0, fat = 18.0),
         WeightEntity(id = "w1", date = "2026-08-01", weight = 71.2),
-    )
-    private val strengths = listOf(
-        StrengthEntity(id = "s1", date = today, ex = "ベンチプレス", weight = 60.0, reps = 10, sets = 3),
-        StrengthEntity(id = "s2", date = today, ex = "ベンチプレス", weight = 65.0, reps = 8, sets = 1),
-        StrengthEntity(id = "s3", date = today, ex = "スクワット"),
-        StrengthEntity(id = "s4", date = "2026-08-10", ex = "デッドリフト"),
     )
     private val runs = listOf(
         RunningEntity(id = "r1", date = today, dist = 5.0, min = 27.5, kcal = 300),
@@ -38,28 +31,22 @@ class StatsTest {
 
     @Test
     fun `サマリーは当日の記録だけを集計する`() {
-        val summary = homeSummaryOf(weights, strengths, runs, meals, today)
+        val summary = homeSummaryOf(weights, runs, meals, today)
         assertEquals(500, summary.intakeKcal)
         assertEquals(300, summary.burnedKcal)
     }
 
     @Test
     fun `最新体重は日付降順の先頭を使う`() {
-        assertEquals(70.0, homeSummaryOf(weights, strengths, runs, meals, today).latestWeight?.weight)
-    }
-
-    @Test
-    fun `同じ種目を複数セットに分けて記録しても1種目として数える`() {
-        assertEquals(2, homeSummaryOf(weights, strengths, runs, meals, today).strengthExerciseCount)
+        assertEquals(70.0, homeSummaryOf(weights, runs, meals, today).latestWeight?.weight)
     }
 
     @Test
     fun `記録が1件もなくてもサマリーは作れる`() {
-        val summary = homeSummaryOf(emptyList(), emptyList(), emptyList(), emptyList(), today)
+        val summary = homeSummaryOf(emptyList(), emptyList(), emptyList(), today)
         assertNull(summary.latestWeight)
         assertEquals(0, summary.intakeKcal)
         assertEquals(0, summary.burnedKcal)
-        assertEquals(0, summary.strengthExerciseCount)
     }
 
     // ---- FR-07 体重推移グラフ ----
@@ -85,51 +72,6 @@ class StatsTest {
     fun `推移は直近30件までに絞る`() {
         val many = (1..40).map { WeightEntity(id = "x$it", date = "2026-08-11", weight = 70.0 + it) }
         assertEquals(WeightTrend.MAX_POINTS, weightTrendOf(many).points.size)
-    }
-
-    // ---- FR-08 最近の記録一覧 ----
-
-    @Test
-    fun `4種別すべてが1つのリストに入る`() {
-        val recent = buildRecentRecords(weights, strengths, runs, meals)
-        assertEquals(weights.size + strengths.size + runs.size + meals.size, recent.size)
-        assertEquals(RecordKind.entries.toSet(), recent.map { it.kind }.toSet())
-    }
-
-    @Test
-    fun `日付降順で並ぶ`() {
-        val dates = buildRecentRecords(weights, strengths, runs, meals).map { it.date }
-        assertEquals(dates.sortedDescending(), dates)
-    }
-
-    @Test
-    fun `同じ日付の中は種別の定義順で安定する`() {
-        val kinds = buildRecentRecords(weights, strengths, runs, meals)
-            .filter { it.date == today }
-            .map { it.kind }
-            .distinct()
-        assertEquals(
-            listOf(RecordKind.WEIGHT, RecordKind.STRENGTH, RecordKind.RUNNING, RecordKind.MEAL),
-            kinds,
-        )
-    }
-
-    @Test
-    fun `件数が多いときは直近ぶんだけに絞る`() {
-        val many = (1..40).map { WeightEntity(id = "x$it", date = "2026-08-11", weight = 70.0) }
-        assertEquals(RECENT_RECORD_LIMIT, buildRecentRecords(many, emptyList(), emptyList(), emptyList()).size)
-    }
-
-    @Test
-    fun `任意項目が未入力の記録は詳細を空にする`() {
-        val recent = buildRecentRecords(weights, strengths, runs, meals)
-        assertEquals("", recent.first { it.id == "s3" }.detail)
-    }
-
-    @Test
-    fun `ランの詳細には時間とペースと消費カロリーが並ぶ`() {
-        val recent = buildRecentRecords(weights, strengths, runs, meals)
-        assertEquals("27.5 分  /  5'30\" /km  /  300 kcal", recent.first { it.id == "r1" }.detail)
     }
 
     // ---- FR-10 食事の当日合計 ----
