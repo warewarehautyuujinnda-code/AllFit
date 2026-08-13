@@ -1,8 +1,6 @@
 package com.hinata.fitlog.ui.running
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -11,29 +9,30 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hinata.fitlog.data.entity.RunningEntity
+import com.hinata.fitlog.domain.formatAmount
+import com.hinata.fitlog.domain.formatPace
 import com.hinata.fitlog.ui.common.DatePickerField
 import com.hinata.fitlog.ui.common.DateUtil
+import com.hinata.fitlog.ui.common.RecordCard
 import kotlinx.coroutines.launch
 
 @Composable
@@ -46,7 +45,7 @@ fun RunningScreen(viewModel: RunningViewModel = viewModel()) {
     var kcal by remember { mutableStateOf("") }
 
     // 距離と時間が入力されている間だけ、保存前でもペースを表示する（FR-03）
-    val pace = RunningViewModel.formatPace(
+    val pace = formatPace(
         dist.trim().toDoubleOrNull(),
         minutes.trim().toDoubleOrNull(),
     )
@@ -171,7 +170,11 @@ fun RunningScreen(viewModel: RunningViewModel = viewModel()) {
                 }
             } else {
                 items(items, key = { it.id }) { item ->
-                    RunningRow(item, modifier = Modifier.padding(top = 8.dp))
+                    RunningRow(
+                        item = item,
+                        onDelete = { viewModel.delete(item) },
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                 }
             }
         }
@@ -179,25 +182,25 @@ fun RunningScreen(viewModel: RunningViewModel = viewModel()) {
 }
 
 @Composable
-private fun RunningRow(item: RunningEntity, modifier: Modifier = Modifier) {
-    Card(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(item.date, style = MaterialTheme.typography.bodySmall)
-                Text("${item.dist} km", style = MaterialTheme.typography.bodyLarge)
-            }
+private fun RunningRow(
+    item: RunningEntity,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    RecordCard(
+        summary = "${item.date}　${formatAmount(item.dist)} km",
+        onDelete = onDelete,
+        modifier = modifier,
+    ) {
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Text(item.date, style = MaterialTheme.typography.bodySmall)
+            Text("${formatAmount(item.dist)} km", style = MaterialTheme.typography.bodyLarge)
             // 時間・消費カロリーは任意のため、入力があるものだけを並べる。
             // ペースは距離と時間が揃っているときだけ計算できる
             val detail = listOfNotNull(
-                item.min?.let { "${it} 分" },
-                RunningViewModel.formatPace(item.dist, item.min)?.let { "$it /km" },
-                item.kcal?.let { "${it} kcal" },
+                item.min?.let { "${formatAmount(it)} 分" },
+                formatPace(item.dist, item.min)?.let { "$it /km" },
+                item.kcal?.let { "$it kcal" },
             ).joinToString("  /  ")
             if (detail.isNotEmpty()) {
                 Text(detail, style = MaterialTheme.typography.bodyMedium)

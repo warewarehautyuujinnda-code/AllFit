@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.StrengthEntity
+import com.hinata.fitlog.domain.parseOptionalDouble
+import com.hinata.fitlog.domain.parseOptionalInt
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -54,22 +56,8 @@ class StrengthViewModel(app: Application) : AndroidViewModel(app) {
         return true
     }
 
-    /** 任意の数値項目の解析結果。解析できなかった場合と「未入力（null）」を区別するための入れ物 */
-    private class Parsed<T>(val value: T?)
-
-    /** 未入力なら null 値、正の数ならその値、それ以外（数値でない・0以下）は解析失敗として null を返す */
-    private fun parseOptionalDouble(text: String): Parsed<Double>? {
-        val trimmed = text.trim()
-        if (trimmed.isEmpty()) return Parsed(null)
-        val value = trimmed.toDoubleOrNull() ?: return null
-        return if (value > 0.0) Parsed(value) else null
-    }
-
-    /** 未入力なら null 値、正の整数ならその値、それ以外（数値でない・0以下）は解析失敗として null を返す */
-    private fun parseOptionalInt(text: String): Parsed<Int>? {
-        val trimmed = text.trim()
-        if (trimmed.isEmpty()) return Parsed(null)
-        val value = trimmed.toIntOrNull() ?: return null
-        return if (value > 0) Parsed(value) else null
+    /** 記録を1件削除する（FR-05） */
+    fun delete(item: StrengthEntity) {
+        viewModelScope.launch { dao.deleteById(item.id) }
     }
 }

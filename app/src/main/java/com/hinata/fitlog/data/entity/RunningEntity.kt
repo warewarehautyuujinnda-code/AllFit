@@ -3,10 +3,12 @@ package com.hinata.fitlog.data.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.UUID
+import kotlinx.serialization.Serializable
 
 /**
  * ランニングの記録（FR-03 / データ要件 8.3）
  */
+@Serializable
 @Entity(tableName = "running")
 data class RunningEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
