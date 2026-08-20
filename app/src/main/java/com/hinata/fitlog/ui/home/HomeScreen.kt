@@ -28,6 +28,7 @@ import com.hinata.fitlog.ui.common.DateUtil
 fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val summary by viewModel.summary.collectAsState()
     val trend by viewModel.weightTrend.collectAsState()
+    val goal by viewModel.weightGoal.collectAsState()
 
     LazyColumn(
         modifier = Modifier
@@ -53,7 +54,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         }
 
         item {
-            WeightChart(trend)
+            WeightChart(trend = trend, goal = goal)
         }
     }
 }
