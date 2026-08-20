@@ -1,7 +1,6 @@
 package com.hinata.fitlog.domain
 
 import com.hinata.fitlog.data.entity.MealEntity
-import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.WeightEntity
 
 /**
@@ -18,8 +17,6 @@ data class HomeSummary(
     val latestWeight: WeightEntity? = null,
     /** 当日の摂取カロリー（食事の合計） */
     val intakeKcal: Int = 0,
-    /** 当日の消費カロリー（ランニングの合計） */
-    val burnedKcal: Int = 0,
 )
 
 /** 体重推移グラフ（FR-07）に渡す、直近30件を古い順に並べたデータ */
@@ -52,14 +49,12 @@ data class MealTotals(
  */
 fun homeSummaryOf(
     weights: List<WeightEntity>,
-    runs: List<RunningEntity>,
     meals: List<MealEntity>,
     today: String,
 ): HomeSummary = HomeSummary(
     latestWeight = weights.firstOrNull(),
     // 未入力の kcal は 0 として足す。合計なので「未入力＝加算なし」で意味が通る
     intakeKcal = meals.filter { it.date == today }.sumOf { it.kcal ?: 0 },
-    burnedKcal = runs.filter { it.date == today }.sumOf { it.kcal ?: 0 },
 )
 
 /**

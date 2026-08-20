@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.domain.parseOptionalDouble
-import com.hinata.fitlog.domain.parseOptionalInt
 import com.hinata.fitlog.domain.parseRequiredDouble
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,17 +23,17 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
-     * 保存する。距離は必須、時間・消費カロリーは任意。
+     * 保存する。距離は必須、時間は任意。
      * 任意項目は未入力なら null として保存し、入力があるのに数値として読めない場合は
      * 黙って捨てずに保存を失敗させる。
      * ペースは距離と時間から都度計算できるため保存しない（データ要件 8.3）。
+     * 消費カロリーは扱わないが、保存済みデータを壊さないため列は残してあり、常に null になる。
      * @return 入力が正しく保存できたら true
      */
     fun save(
         date: String,
         distText: String,
         minText: String,
-        kcalText: String,
     ): Boolean {
         if (date.isBlank()) return false
 
@@ -42,7 +41,6 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
         val dist = parseRequiredDouble(distText) ?: return false
 
         val min = parseOptionalDouble(minText) ?: return false
-        val kcal = parseOptionalInt(kcalText) ?: return false
 
         viewModelScope.launch {
             dao.upsert(
@@ -50,7 +48,7 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
                     date = date,
                     dist = dist,
                     min = min.value,
-                    kcal = kcal.value,
+                    kcal = null,
                 )
             )
         }
