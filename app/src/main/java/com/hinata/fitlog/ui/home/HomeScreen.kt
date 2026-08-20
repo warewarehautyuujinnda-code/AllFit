@@ -58,7 +58,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     }
 }
 
-/** 当日サマリーの3項目（FR-06）。1行に並べる */
+/** 当日サマリーの2項目（FR-06）。1行に並べる */
 @Composable
 private fun SummaryGrid(summary: HomeSummary) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -74,12 +74,6 @@ private fun SummaryGrid(summary: HomeSummary) {
             label = "摂取カロリー",
             value = "${summary.intakeKcal} kcal",
             note = "今日の食事",
-            modifier = Modifier.weight(1f),
-        )
-        SummaryCard(
-            label = "消費カロリー",
-            value = "${summary.burnedKcal} kcal",
-            note = "今日のラン",
             modifier = Modifier.weight(1f),
         )
     }
