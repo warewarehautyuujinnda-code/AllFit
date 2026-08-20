@@ -20,6 +20,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // CIとローカルで同じ鍵を使うことで、GitHub Actionsが作ったAPKと手元のビルドを
+    // 同じアプリとして上書きインストールできるようにする（鍵が違うと上書きが拒否される）
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("../keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
