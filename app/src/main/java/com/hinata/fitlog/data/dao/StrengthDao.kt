@@ -27,6 +27,9 @@ interface StrengthDao {
     @Query("DELETE FROM strength WHERE id = :id")
     suspend fun deleteById(id: String)
 
+    @Query("DELETE FROM strength WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
+
     @Query("DELETE FROM strength")
     suspend fun deleteAll()
 }

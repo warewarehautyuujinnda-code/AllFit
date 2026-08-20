@@ -16,6 +16,8 @@ data class StrengthEntity(
     val date: String,
     /** 種目名 */
     val ex: String,
+    /** 部位（BodyPart の id）。任意。version 2 で追加したため既存記録は null */
+    val part: String? = null,
     /** 重量(kg)。任意 */
     val weight: Double? = null,
     /** 回数。任意 */
