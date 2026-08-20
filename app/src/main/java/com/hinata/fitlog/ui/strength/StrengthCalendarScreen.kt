@@ -1,6 +1,7 @@
 package com.hinata.fitlog.ui.strength
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -67,11 +68,6 @@ fun StrengthCalendarScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAdd) {
-                Icon(Icons.Filled.Add, contentDescription = "種目を選んで記録する")
-            }
-        },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -93,22 +89,38 @@ fun StrengthCalendarScreen(
                 )
             }
 
+            // 追加ボタンは浮かせず見出しの行に置く。カレンダーが画面の大半を占めるため
+            // 記録カードは常に最下部に来てしまい、FAB にすると最右列の値が隠れて読めない
             item {
-                Text(
-                    "${selectedDate.year}年${selectedDate.monthValue}月" +
-                        "${selectedDate.dayOfMonth}日(${japaneseWeekday(selectedDate)})",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 16.dp),
-                )
-            }
-
-            item {
-                Text(
-                    "総ボリューム ${formatGrouped(day.totalVolume)} kg",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "${selectedDate.year}年${selectedDate.monthValue}月" +
+                                "${selectedDate.dayOfMonth}日(${japaneseWeekday(selectedDate)})",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            "総ボリューム ${formatGrouped(day.totalVolume)} kg",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    FilledTonalButton(onClick = onAdd) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text("記録する", modifier = Modifier.padding(start = 4.dp))
+                    }
+                }
             }
 
             if (day.exercises.isEmpty()) {
@@ -130,8 +142,7 @@ fun StrengthCalendarScreen(
                 }
             }
 
-            // FAB に最後のカードが隠れないよう下に余白を作る
-            item { Box(modifier = Modifier.height(88.dp)) }
+            item { Box(modifier = Modifier.height(16.dp)) }
         }
     }
 }
