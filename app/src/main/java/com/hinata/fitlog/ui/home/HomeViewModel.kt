@@ -22,7 +22,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val db = (app as FitLogApp).database
 
     private val weights = db.weightDao().observeAll()
-    private val runs = db.runningDao().observeAll()
     private val meals = db.mealDao().observeAll()
 
     /**
@@ -30,8 +29,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
      * 「今日」は購読時ではなく集計のたびに評価するので、日付をまたいでも次の更新で正しくなる。
      */
     val summary: StateFlow<HomeSummary> =
-        combine(weights, runs, meals) { w, r, m ->
-            homeSummaryOf(w, r, m, DateUtil.today())
+        combine(weights, meals) { w, m ->
+            homeSummaryOf(w, m, DateUtil.today())
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeSummary())
 
     /** 体重推移グラフ（FR-07） */
