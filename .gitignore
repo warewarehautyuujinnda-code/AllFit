@@ -21,3 +21,5 @@ Thumbs.db
 *.log
 *.keystore
 *.jks
+# デバッグ用の共有鍵は例外（秘密にする必要がなく、CIとローカルで同じ鍵を使うために意図的にコミットする）
+!keystore/debug.keystore

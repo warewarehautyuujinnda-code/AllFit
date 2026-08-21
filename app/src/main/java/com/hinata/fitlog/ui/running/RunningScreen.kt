@@ -42,7 +42,6 @@ fun RunningScreen(viewModel: RunningViewModel = viewModel()) {
     var date by remember { mutableStateOf(DateUtil.today()) }
     var dist by remember { mutableStateOf("") }
     var minutes by remember { mutableStateOf("") }
-    var kcal by remember { mutableStateOf("") }
 
     // 距離と時間が入力されている間だけ、保存前でもペースを表示する（FR-03）
     val pace = formatPace(
@@ -104,19 +103,6 @@ fun RunningScreen(viewModel: RunningViewModel = viewModel()) {
             }
 
             item {
-                OutlinedTextField(
-                    value = kcal,
-                    onValueChange = { kcal = it },
-                    label = { Text("消費カロリー (kcal) ※任意") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                )
-            }
-
-            item {
                 Text(
                     text = if (pace != null) "ペース: $pace /km" else "ペース: 距離と時間を入力すると表示されます",
                     style = MaterialTheme.typography.bodyMedium,
@@ -127,16 +113,15 @@ fun RunningScreen(viewModel: RunningViewModel = viewModel()) {
             item {
                 Button(
                     onClick = {
-                        val ok = viewModel.save(date, dist, minutes, kcal)
+                        val ok = viewModel.save(date, dist, minutes)
                         scope.launch {
                             if (ok) {
                                 dist = ""
                                 minutes = ""
-                                kcal = ""
                                 snackbarHostState.showSnackbar("保存しました")
                             } else {
                                 snackbarHostState.showSnackbar(
-                                    "距離を入力し、時間・消費カロリーは数値で入力してください"
+                                    "距離を入力し、時間は数値で入力してください"
                                 )
                             }
                         }
@@ -195,12 +180,11 @@ private fun RunningRow(
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
             Text(item.date, style = MaterialTheme.typography.bodySmall)
             Text("${formatAmount(item.dist)} km", style = MaterialTheme.typography.bodyLarge)
-            // 時間・消費カロリーは任意のため、入力があるものだけを並べる。
+            // 時間は任意のため、入力があるものだけを並べる。
             // ペースは距離と時間が揃っているときだけ計算できる
             val detail = listOfNotNull(
                 item.min?.let { "${formatAmount(it)} 分" },
                 formatPace(item.dist, item.min)?.let { "$it /km" },
-                item.kcal?.let { "$it kcal" },
             ).joinToString("  /  ")
             if (detail.isNotEmpty()) {
                 Text(detail, style = MaterialTheme.typography.bodyMedium)

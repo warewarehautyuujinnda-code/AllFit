@@ -1,7 +1,6 @@
 package com.hinata.fitlog.domain
 
 import com.hinata.fitlog.data.entity.MealEntity
-import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.WeightEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -17,10 +16,6 @@ class StatsTest {
         WeightEntity(id = "w2", date = "2026-08-11", weight = 70.0, fat = 18.0),
         WeightEntity(id = "w1", date = "2026-08-01", weight = 71.2),
     )
-    private val runs = listOf(
-        RunningEntity(id = "r1", date = today, dist = 5.0, min = 27.5, kcal = 300),
-        RunningEntity(id = "r2", date = today, dist = 2.0),
-    )
     private val meals = listOf(
         MealEntity(id = "m1", date = today, name = "朝食", kcal = 500, p = 30.0, f = 10.0, c = 60.0),
         MealEntity(id = "m2", date = today, name = "昼食"),
@@ -31,22 +26,19 @@ class StatsTest {
 
     @Test
     fun `サマリーは当日の記録だけを集計する`() {
-        val summary = homeSummaryOf(weights, runs, meals, today)
-        assertEquals(500, summary.intakeKcal)
-        assertEquals(300, summary.burnedKcal)
+        assertEquals(500, homeSummaryOf(weights, meals, today).intakeKcal)
     }
 
     @Test
     fun `最新体重は日付降順の先頭を使う`() {
-        assertEquals(70.0, homeSummaryOf(weights, runs, meals, today).latestWeight?.weight)
+        assertEquals(70.0, homeSummaryOf(weights, meals, today).latestWeight?.weight)
     }
 
     @Test
     fun `記録が1件もなくてもサマリーは作れる`() {
-        val summary = homeSummaryOf(emptyList(), emptyList(), emptyList(), today)
+        val summary = homeSummaryOf(emptyList(), emptyList(), today)
         assertNull(summary.latestWeight)
         assertEquals(0, summary.intakeKcal)
-        assertEquals(0, summary.burnedKcal)
     }
 
     // ---- FR-07 体重推移グラフ ----
