@@ -3,8 +3,10 @@ package com.hinata.fitlog.ui
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -19,9 +21,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -31,6 +37,7 @@ import androidx.navigation.compose.rememberNavController
 import com.hinata.fitlog.ui.data.DataScreen
 import com.hinata.fitlog.ui.feedback.FeedbackAnnotateScreen
 import com.hinata.fitlog.ui.feedback.FeedbackButton
+import com.hinata.fitlog.ui.feedback.FeedbackButtonSize
 import com.hinata.fitlog.ui.feedback.captureWindow
 import com.hinata.fitlog.ui.home.HomeScreen
 import com.hinata.fitlog.ui.meal.MealScreen
@@ -39,6 +46,9 @@ import com.hinata.fitlog.ui.running.RunningScreen
 import com.hinata.fitlog.ui.strength.StrengthScreen
 import com.hinata.fitlog.ui.weight.WeightScreen
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+
+private val FeedbackButtonMargin = 16.dp
 
 private fun Context.findActivity(): Activity {
     var context = this
@@ -51,7 +61,7 @@ private fun Context.findActivity(): Activity {
 
 /**
  * アプリのルート。下部ナビゲーションで6画面を切り替える。
- * 全画面共通のフィードバックボタン（虫アイコン）もここでオーバーレイ表示する。
+ * 全画面共通のフィードバックボタンもここでオーバーレイ表示する。
  */
 @Composable
 fun FitLogAppRoot() {
@@ -60,7 +70,7 @@ fun FitLogAppRoot() {
     val scope = rememberCoroutineScope()
     var captured by remember { mutableStateOf<ImageBitmap?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             bottomBar = {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -104,15 +114,47 @@ fun FitLogAppRoot() {
             }
         }
 
+        var dragOffset by remember { mutableStateOf(Offset.Zero) }
+        var grabbed by remember { mutableStateOf(false) }
+
+        // 既定位置（右端の垂直中央）からの相対移動量で持つので、画面内に収まる範囲もそこからの差分で求める
+        val density = LocalDensity.current
+        val maxX = with(density) { FeedbackButtonMargin.toPx() }
+        val minX = with(density) {
+            -(maxWidth - FeedbackButtonMargin - FeedbackButtonSize).toPx()
+        }.coerceAtMost(maxX)
+        val maxY = with(density) { ((maxHeight - FeedbackButtonSize) / 2).toPx() }
+            .coerceAtLeast(0f)
+        val minY = -maxY
+
         FeedbackButton(
             onClick = {
-                scope.launch {
-                    captureWindow(activity)?.let { bitmap -> captured = bitmap.asImageBitmap() }
+                // 長押しで掴んだ直後の指離しでも FAB の onClick は発火するため、掴んでいたら無視する
+                if (!grabbed) {
+                    scope.launch {
+                        captureWindow(activity)?.let { bitmap -> captured = bitmap.asImageBitmap() }
+                    }
                 }
             },
+            grabbed = grabbed,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 16.dp),
+                .offset { IntOffset(dragOffset.x.roundToInt(), dragOffset.y.roundToInt()) }
+                .padding(end = FeedbackButtonMargin)
+                .pointerInput(minX, maxX, maxY) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { grabbed = true },
+                        onDragEnd = { grabbed = false },
+                        onDragCancel = { grabbed = false },
+                        onDrag = { change, delta ->
+                            change.consume()
+                            dragOffset = Offset(
+                                x = (dragOffset.x + delta.x).coerceIn(minX, maxX),
+                                y = (dragOffset.y + delta.y).coerceIn(minY, maxY),
+                            )
+                        },
+                    )
+                },
         )
 
         captured?.let { bitmap ->

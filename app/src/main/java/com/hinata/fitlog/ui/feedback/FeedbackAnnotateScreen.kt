@@ -5,11 +5,15 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
@@ -38,8 +42,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+
+/** 実機で確実に押せるよう、既定の TextButton の約2倍のタップ領域にする。 */
+private val ActionButtonPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp)
 
 /**
  * キャプチャした画面に赤線で書き込み、メモを添えて共有するフィードバック画面。
@@ -58,24 +66,38 @@ fun FeedbackAnnotateScreen(
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
 
     Surface(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .imePadding(),
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
+                    .padding(top = 16.dp, start = 4.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, contentDescription = "閉じる")
+                IconButton(onClick = onDismiss, modifier = Modifier.size(96.dp)) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = "閉じる",
+                        modifier = Modifier.size(48.dp),
+                    )
                 }
                 Text(
                     "フィードバック",
                     style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
                         .padding(start = 4.dp),
                 )
-                TextButton(onClick = { strokes.clear() }) { Text("クリア") }
+                TextButton(
+                    onClick = { strokes.clear() },
+                    contentPadding = ActionButtonPadding,
+                ) { Text("クリア", style = MaterialTheme.typography.titleLarge) }
                 TextButton(
                     onClick = {
                         val scale = if (boxSize.width > 0) {
@@ -86,7 +108,8 @@ fun FeedbackAnnotateScreen(
                         shareFeedback(context, screenshot, strokes.toList(), scale, note)
                         onDismiss()
                     },
-                ) { Text("共有") }
+                    contentPadding = ActionButtonPadding,
+                ) { Text("共有", style = MaterialTheme.typography.titleLarge) }
             }
 
             Box(
