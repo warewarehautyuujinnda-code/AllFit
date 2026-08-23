@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.StrengthEntity
+import com.hinata.fitlog.domain.BodyPart
 import com.hinata.fitlog.domain.parseOptionalDouble
 import com.hinata.fitlog.domain.parseOptionalInt
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,6 +32,7 @@ class StrengthViewModel(app: Application) : AndroidViewModel(app) {
     fun save(
         date: String,
         exText: String,
+        part: BodyPart?,
         weightText: String,
         repsText: String,
         setsText: String,
@@ -47,6 +49,7 @@ class StrengthViewModel(app: Application) : AndroidViewModel(app) {
                 StrengthEntity(
                     date = date,
                     ex = ex,
+                    part = part?.id,
                     weight = weight.value,
                     reps = reps.value,
                     sets = sets.value,
@@ -56,8 +59,12 @@ class StrengthViewModel(app: Application) : AndroidViewModel(app) {
         return true
     }
 
-    /** 記録を1件削除する（FR-05） */
-    fun delete(item: StrengthEntity) {
-        viewModelScope.launch { dao.deleteById(item.id) }
+    /**
+     * 記録を削除する（FR-05）。
+     * 画面では1種目1日分のカードにまとめて出しているため、その元になった複数件を一度に消す。
+     */
+    fun deleteRecords(ids: List<String>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch { dao.deleteByIds(ids) }
     }
 }

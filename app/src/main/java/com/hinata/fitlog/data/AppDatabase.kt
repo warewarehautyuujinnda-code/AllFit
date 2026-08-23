@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.hinata.fitlog.data.dao.MealDao
 import com.hinata.fitlog.data.dao.RunningDao
 import com.hinata.fitlog.data.dao.StrengthDao
@@ -23,7 +25,7 @@ import com.hinata.fitlog.data.entity.WeightEntity
         RunningEntity::class,
         MealEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,6 +35,16 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mealDao(): MealDao
 
     companion object {
+        /**
+         * 筋トレ記録に部位（part）を足した。列の追加だけなので既存の記録はそのまま残る。
+         * 破壊的フォールバックは使わない（利用者の実データが消えるため）。
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE strength ADD COLUMN part TEXT")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -42,7 +54,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "fitlog.db",
-                ).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
             }
         }
     }

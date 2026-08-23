@@ -14,6 +14,20 @@ class FormatTest {
     }
 
     @Test
+    fun `大きい数は3桁区切りの整数で表示する`() {
+        assertEquals("3,272", formatGrouped(3272.0))
+        assertEquals("88", formatGrouped(88.0))
+        assertEquals("0", formatGrouped(0.0))
+        assertEquals("107", formatGrouped(106.66666))
+    }
+
+    @Test
+    fun `計算できない値は区切り表示にしない`() {
+        assertEquals("-", formatGrouped(Double.NaN))
+        assertEquals("-", formatGrouped(Double.POSITIVE_INFINITY))
+    }
+
+    @Test
     fun `期間の増減は符号付きで表示する`() {
         assertEquals("+1.2", formatDelta(1.2))
         assertEquals("-0.8", formatDelta(-0.8))

@@ -3,6 +3,7 @@ package com.hinata.fitlog.domain
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 /**
  * 記録の数値を表示用の文字列にする。
@@ -12,6 +13,15 @@ import kotlin.math.roundToInt
 fun formatAmount(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString()
     else String.format(Locale.US, "%.1f", value)
+
+/**
+ * 大きい数を3桁区切りの整数で表示する（例: 3272.0 → 3,272）。
+ * 筋トレのボリュームや推定1RM は kg 単位で桁が大きくなるため、小数を落として読みやすさを取る。
+ */
+fun formatGrouped(value: Double): String {
+    if (!value.isFinite()) return "-"
+    return String.format(Locale.US, "%,d", value.roundToLong())
+}
 
 /**
  * 増減を符号付きで表示する（例: +1.2 / -0.8 / ±0）。体重推移の期間増減（FR-07）で使う。
