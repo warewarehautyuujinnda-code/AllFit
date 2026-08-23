@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.hinata.fitlog.BuildConfig
 import com.hinata.fitlog.data.RecordCounts
 
 /**
@@ -133,6 +134,18 @@ fun DataScreen(viewModel: DataViewModel = viewModel()) {
             ) {
                 Text("すべての記録を削除")
             }
+
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+
+            // 新しいAPKを入れたあと本当に入れ替わったのかを、本人がここで確認できるようにする。
+            // Playストア経由ではないので「更新されたはず」を信じるしかない状態を避けたい。
+            Text("バージョン", style = MaterialTheme.typography.titleMedium)
+            Text(BuildConfig.VERSION_NAME, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "新しいAPKを入れたあと、ここの表示が変わっていれば入れ替わっています。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 
