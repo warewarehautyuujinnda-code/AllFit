@@ -24,6 +24,33 @@ fun formatDelta(value: Double): String = when {
 }
 
 /**
+ * 増減を向きの分かる矢印付きで表示する（例: ↗ 1.2 / ↘ 0.8 / → 0.0）。
+ * 体重推移のサマリー「最近の傾向」で使う。増減の大きさは常に小数第1位まで出す。
+ */
+fun formatTrend(value: Double): String {
+    // formatDelta と同じく、小数第1位に出ない差は「変化なし」として扱う
+    val arrow = when {
+        abs(value) < 0.05 -> "→"
+        value > 0 -> "↗"
+        else -> "↘"
+    }
+    return "$arrow ${String.format(Locale.US, "%.1f", abs(value))}"
+}
+
+/**
+ * 記録日（yyyy-MM-dd）をグラフの軸などに収まる短い形（M/d）にする。
+ * 想定外の形式はそのまま返す。
+ */
+fun formatShortDate(date: String): String {
+    val parts = date.split("-")
+    if (parts.size != 3) return date
+    val month = parts[1].trimStart('0')
+    val day = parts[2].trimStart('0')
+    if (month.isEmpty() || day.isEmpty()) return date
+    return "$month/$day"
+}
+
+/**
  * ペース（分/km）を 5'30" 形式で返す（FR-03）。
  * 距離・時間のどちらかが未入力・0以下・非有限値の場合は計算できないため null を返す。
  *

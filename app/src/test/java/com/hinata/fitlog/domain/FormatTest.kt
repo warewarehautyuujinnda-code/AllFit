@@ -27,6 +27,37 @@ class FormatTest {
     }
 
     @Test
+    fun `最近の傾向は増減の向きを矢印で示す`() {
+        assertEquals("↗ 1.2", formatTrend(1.2))
+        assertEquals("↘ 0.8", formatTrend(-0.8))
+        assertEquals("→ 0.0", formatTrend(0.0))
+    }
+
+    @Test
+    fun `小数第1位で表示できない差は傾向なしとして扱う`() {
+        assertEquals("→ 0.0", formatTrend(0.01))
+        assertEquals("→ 0.0", formatTrend(-0.04))
+    }
+
+    @Test
+    fun `傾向の大きさは整数でも小数第1位まで出す`() {
+        assertEquals("↘ 2.0", formatTrend(-2.0))
+    }
+
+    @Test
+    fun `記録日はグラフ用に月日だけの短い形にする`() {
+        assertEquals("8/1", formatShortDate("2026-08-01"))
+        assertEquals("12/25", formatShortDate("2026-12-25"))
+    }
+
+    @Test
+    fun `想定外の形式の日付はそのまま返す`() {
+        assertEquals("", formatShortDate(""))
+        assertEquals("2026/08/01", formatShortDate("2026/08/01"))
+        assertEquals("2026-08-", formatShortDate("2026-08-"))
+    }
+
+    @Test
     fun `ペースは分と秒に分けて表示する`() {
         assertEquals("5'30\"", formatPace(10.0, 55.0))
     }

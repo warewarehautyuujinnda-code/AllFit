@@ -37,4 +37,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val weightTrend: StateFlow<WeightTrend> = weights
         .map { weightTrendOf(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightTrend())
+
+    /** 目標体重(kg)。設定の入り口は体重タブにあり、ここでは表示にだけ使う */
+    val weightGoal: StateFlow<Double?> = (app as FitLogApp).weightGoalStore.goal
 }
