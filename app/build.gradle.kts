@@ -6,6 +6,18 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// 「どのビルドが端末に入っているか」を本人が見分けられるようにするための表示名。
+// CI では Actions の実行番号とコミットが入り、手元のビルドでは (local) になる。
+val buildLabel: String = run {
+    val runNumber = System.getenv("GITHUB_RUN_NUMBER")
+    val shortSha = System.getenv("GITHUB_SHA")?.take(7)
+    when {
+        runNumber != null && shortSha != null -> "1.0 (build $runNumber / $shortSha)"
+        runNumber != null -> "1.0 (build $runNumber)"
+        else -> "1.0 (local)"
+    }
+}
+
 android {
     namespace = "com.hinata.fitlog"
     compileSdk = 35
@@ -14,14 +26,23 @@ android {
         applicationId = "com.hinata.fitlog"
         minSdk = 26
         targetSdk = 35
+        // versionCode はあえて 1 のまま固定する。このアプリは Play ストアではなく
+        // GitHub のリリースや Actions のアーティファクトから直接APKを入れるので、
+        // 「ブランチのビルドを試して、やっぱり main の版に戻す」という行き来が普通に起きる。
+        // versionCode を上げてしまうと、番号の小さいAPKがダウングレード扱いで弾かれて
+        // 入れ直せなくなる。署名が同じなら同じ versionCode の上書きは常に通るため、
+        // どのビルドかは versionName 側（buildLabel）で見分ける。
         versionCode = 1
-        versionName = "1.0"
+        versionName = buildLabel
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // CIとローカルで同じ鍵を使うことで、GitHub Actionsが作ったAPKと手元のビルドを
-    // 同じアプリとして上書きインストールできるようにする（鍵が違うと上書きが拒否される）
+    // 端末へはPlayストアを通さずサイドロードするので、署名鍵はリポジトリにコミットした
+    // 共有鍵ひとつに統一し、debug と release の両方をこれで署名する。CIが作ったAPKと
+    // 手元のビルドを同じアプリとして上書きインストールできるようにするため（鍵が違うと拒否される）。
+    // この鍵は公開リポジトリに置いてある以上ひみつではない。Playストアに出す場合は
+    // ここを GitHub Secrets から読む専用の鍵に差し替えること。
     signingConfigs {
         getByName("debug") {
             storeFile = file("../keystore/debug.keystore")
@@ -33,11 +54,16 @@ android {
 
     buildTypes {
         release {
+            // 端末に配るのはこの release ビルド。debug ビルドはマニフェストに
+            // android:debuggable="true" が付くため、Play プロテクトにサイドロードを
+            // ブロックされやすく、デバッグ用ツールを同梱するぶんサイズも大きい。
+            // R8 は Room / kotlinx.serialization を壊しうるので今は有効にしない。
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -49,6 +75,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // アプリ内にバージョンを出すために BuildConfig.VERSION_NAME を使う
+        buildConfig = true
     }
 }
 

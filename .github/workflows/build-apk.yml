@@ -23,18 +23,31 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      # debug ではなく release をビルドする。debug ビルドは android:debuggable="true" が
+      # 付くため、スマホに直接入れようとすると Play プロテクトにブロックされやすい。
+      # 署名鍵は debug と共通（keystore/debug.keystore）なので、今入っているアプリに
+      # そのまま上書きインストールできる。
+      - name: Build release APK
+        run: ./gradlew assembleRelease
 
       - name: アーティファクト名用にブランチ名を整形
         id: safe_name
         run: echo "name=$(echo '${{ github.ref_name }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
 
+      # ダウンロードしたときにどのビルドか分かるようファイル名を付け替える。
+      # リリース側は毎回同じ fitlog.apk にして、スマホから探しやすくしておく。
+      - name: APKに分かりやすい名前を付ける
+        run: |
+          mkdir -p dist release-asset
+          cp app/build/outputs/apk/release/app-release.apk \
+            "dist/fitlog-${{ steps.safe_name.outputs.name }}-${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk release-asset/fitlog.apk
+
       - name: APKをアーティファクトとして保存
         uses: actions/upload-artifact@v4
         with:
           name: fitlog-${{ steps.safe_name.outputs.name }}
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: dist/*.apk
 
       # mainのビルドだけは「latest」タグのリリースとして常に上書き公開する。
       # スマホからはここのリンクを開けば常に最新版をダウンロードできる。
@@ -44,6 +57,29 @@ jobs:
         with:
           tag_name: latest
           name: 最新ビルド
-          body: "コミット ${{ github.sha }} から自動生成"
+          # スマホでこのページを開いたときに、詰まったときの対処がその場で読めるようにしておく。
+          body: |
+            build ${{ github.run_number }} / コミット ${{ github.sha }} から自動生成
+
+            ## 入れ方
+
+            下の `fitlog.apk` をタップしてダウンロードし、通知やファイルアプリから開く。
+
+            ## 「アプリがインストールされていません」と出たとき
+
+            Playストアを通さないアプリなので、Android 側が一度止めにきます。故障ではありません。
+
+            1. **「Google Play プロテクト / デバイスを保護するため、アプリをブロックしました」**
+               と出たら、大きい「OK」ではなく、その上にある小さい **「インストールする」** を押す。
+               「OK」を押すと中断され、そのあと「アプリがインストールされていません」と表示されます。
+            2. それでも入らないときは、**FitLog を一度アンインストールしてから**入れ直す。
+               古い版と署名が違うと上書きできません（記録は消えるので、先にデータタブから
+               JSONで書き出しておいてください）。
+            3. 「不明なアプリのインストール」の許可を求められたら、
+               ブラウザやファイルアプリに対して許可する。
+
+            入れ替わったかどうかは、アプリの **データタブ一番下のバージョン表示** で確認できます。
+
+            詳しくは [docs/インストール手順.md](https://github.com/${{ github.repository }}/blob/main/docs/インストール手順.md)
           prerelease: true
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: release-asset/fitlog.apk
