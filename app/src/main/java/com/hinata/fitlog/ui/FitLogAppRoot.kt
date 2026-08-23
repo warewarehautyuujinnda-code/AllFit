@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -116,6 +117,8 @@ fun FitLogAppRoot() {
 
         var dragOffset by remember { mutableStateOf(Offset.Zero) }
         var grabbed by remember { mutableStateOf(false) }
+        // キャプチャ画像にボタン自身が写り込まないよう、撮影中だけ非表示にする
+        var feedbackButtonVisible by remember { mutableStateOf(true) }
 
         // 既定位置（右端の垂直中央）からの相対移動量で持つので、画面内に収まる範囲もそこからの差分で求める
         val density = LocalDensity.current
@@ -127,35 +130,45 @@ fun FitLogAppRoot() {
             .coerceAtLeast(0f)
         val minY = -maxY
 
-        FeedbackButton(
-            onClick = {
-                // 長押しで掴んだ直後の指離しでも FAB の onClick は発火するため、掴んでいたら無視する
-                if (!grabbed) {
-                    scope.launch {
-                        captureWindow(activity)?.let { bitmap -> captured = bitmap.asImageBitmap() }
+        if (feedbackButtonVisible) {
+            FeedbackButton(
+                onClick = {
+                    // 長押しで掴んだ直後の指離しでも FAB の onClick は発火するため、掴んでいたら無視する
+                    if (!grabbed) {
+                        scope.launch {
+                            // ボタンを非表示にしてから描画が反映されるのを待ち、写り込まない状態でキャプチャする
+                            feedbackButtonVisible = false
+                            withFrameNanos {}
+                            withFrameNanos {}
+                            try {
+                                captureWindow(activity)?.let { bitmap -> captured = bitmap.asImageBitmap() }
+                            } finally {
+                                feedbackButtonVisible = true
+                            }
+                        }
                     }
-                }
-            },
-            grabbed = grabbed,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset { IntOffset(dragOffset.x.roundToInt(), dragOffset.y.roundToInt()) }
-                .padding(end = FeedbackButtonMargin)
-                .pointerInput(minX, maxX, maxY) {
-                    detectDragGesturesAfterLongPress(
-                        onDragStart = { grabbed = true },
-                        onDragEnd = { grabbed = false },
-                        onDragCancel = { grabbed = false },
-                        onDrag = { change, delta ->
-                            change.consume()
-                            dragOffset = Offset(
-                                x = (dragOffset.x + delta.x).coerceIn(minX, maxX),
-                                y = (dragOffset.y + delta.y).coerceIn(minY, maxY),
-                            )
-                        },
-                    )
                 },
-        )
+                grabbed = grabbed,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .offset { IntOffset(dragOffset.x.roundToInt(), dragOffset.y.roundToInt()) }
+                    .padding(end = FeedbackButtonMargin)
+                    .pointerInput(minX, maxX, maxY) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { grabbed = true },
+                            onDragEnd = { grabbed = false },
+                            onDragCancel = { grabbed = false },
+                            onDrag = { change, delta ->
+                                change.consume()
+                                dragOffset = Offset(
+                                    x = (dragOffset.x + delta.x).coerceIn(minX, maxX),
+                                    y = (dragOffset.y + delta.y).coerceIn(minY, maxY),
+                                )
+                            },
+                        )
+                    },
+            )
+        }
 
         captured?.let { bitmap ->
             FeedbackAnnotateScreen(

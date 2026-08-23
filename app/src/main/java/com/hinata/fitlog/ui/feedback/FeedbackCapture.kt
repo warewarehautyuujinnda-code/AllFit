@@ -9,7 +9,8 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
- * 現在のウィンドウ全体（フィードバックボタン自身も含む）をキャプチャする。
+ * 現在のウィンドウ全体をそのままキャプチャする。フィードバックボタン自身を写り込ませたくない場合は、
+ * 呼び出し側で撮影前にボタンを非表示にしておくこと（FitLogAppRoot参照）。
  * Jetpack ComposeのgraphicsLayerキャプチャAPIはCompose BOMのバージョンによって
  * 使えないことがあるため、より枯れたPixelCopy（API 26+のWindow版）を使う。
  */
