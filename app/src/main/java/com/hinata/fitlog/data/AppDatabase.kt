@@ -8,10 +8,12 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.hinata.fitlog.data.dao.MealDao
 import com.hinata.fitlog.data.dao.RunningDao
+import com.hinata.fitlog.data.dao.RunningSplitDao
 import com.hinata.fitlog.data.dao.StrengthDao
 import com.hinata.fitlog.data.dao.WeightDao
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.RunningEntity
+import com.hinata.fitlog.data.entity.RunningSplitEntity
 import com.hinata.fitlog.data.entity.StrengthEntity
 import com.hinata.fitlog.data.entity.WeightEntity
 
@@ -24,8 +26,9 @@ import com.hinata.fitlog.data.entity.WeightEntity
         StrengthEntity::class,
         RunningEntity::class,
         MealEntity::class,
+        RunningSplitEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun strengthDao(): StrengthDao
     abstract fun runningDao(): RunningDao
     abstract fun mealDao(): MealDao
+    abstract fun runningSplitDao(): RunningSplitDao
 
     companion object {
         /**
@@ -45,6 +49,29 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * GPS計測したランの1分ごとの内訳を持つテーブルを追加した。
+         * 既存の running テーブルには変更がないため、手入力済みの記録はそのまま残る。
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `running_split` (
+                        `id` TEXT NOT NULL,
+                        `runId` TEXT NOT NULL,
+                        `minuteIndex` INTEGER NOT NULL,
+                        `distanceKm` REAL NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_running_split_runId` ON `running_split` (`runId`)"
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -54,7 +81,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "fitlog.db",
-                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
             }
         }
     }
