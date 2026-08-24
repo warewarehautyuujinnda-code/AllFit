@@ -2,6 +2,7 @@ package com.hinata.fitlog.data
 
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.RunningEntity
+import com.hinata.fitlog.data.entity.RunningSplitEntity
 import com.hinata.fitlog.data.entity.StrengthEntity
 import com.hinata.fitlog.data.entity.WeightEntity
 import kotlinx.serialization.Serializable
@@ -25,8 +26,10 @@ data class FitLogBackup(
     val strength: List<StrengthEntity> = emptyList(),
     val running: List<RunningEntity> = emptyList(),
     val meal: List<MealEntity> = emptyList(),
+    /** GPS計測したランの1分ごとの内訳。手入力の記録では対応する要素はない */
+    val runningSplit: List<RunningSplitEntity> = emptyList(),
 ) {
-    /** 収録されている記録の総件数 */
+    /** 収録されている記録の総件数（内訳は記録そのものではないため件数には含めない） */
     val totalCount: Int
         get() = weight.size + strength.size + running.size + meal.size
 

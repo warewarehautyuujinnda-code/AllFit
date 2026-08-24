@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- ランニングタブのGPS計測（RunTrackingService）で使う -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Android 13+ で計測中の常駐通知を表示するために必要 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".FitLogApp"
         android:allowBackup="true"
@@ -19,6 +27,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ランニングのGPS計測。画面消灯・他アプリ切り替え中も計測を続けるためフォアグラウンドサービスにしてある -->
+        <service
+            android:name=".running.RunTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
         <!-- フィードバック機能で、書き込み済みスクリーンショットを他アプリと共有するために使用 -->
         <provider

@@ -89,4 +89,22 @@ class FormatTest {
         assertNull(formatPace(Double.NaN, 30.0))
         assertNull(formatPace(5.0, Double.POSITIVE_INFINITY))
     }
+
+    @Test
+    fun `経過時間は分と秒で表示する`() {
+        assertEquals("00:00", formatElapsed(0))
+        assertEquals("05:09", formatElapsed(309))
+        assertEquals("59:59", formatElapsed(3599))
+    }
+
+    @Test
+    fun `1時間以上は時を含めて表示する`() {
+        assertEquals("1:00:00", formatElapsed(3600))
+        assertEquals("2:03:04", formatElapsed(2 * 3600 + 3 * 60 + 4))
+    }
+
+    @Test
+    fun `負の経過時間は0として扱う`() {
+        assertEquals("00:00", formatElapsed(-5))
+    }
 }

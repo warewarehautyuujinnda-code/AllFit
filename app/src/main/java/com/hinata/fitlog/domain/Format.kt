@@ -76,3 +76,19 @@ fun formatPace(dist: Double?, min: Double?): String? {
     val totalSeconds = (min * 60.0 / dist).roundToInt()
     return String.format(Locale.US, "%d'%02d\"", totalSeconds / 60, totalSeconds % 60)
 }
+
+/**
+ * 経過時間(秒)をタイマー表示用に "mm:ss"（1時間以上は "h:mm:ss"）の形式にする。
+ * GPS計測中のタイマー表示で使う。負の値は 0 として扱う。
+ */
+fun formatElapsed(totalSeconds: Long): String {
+    val clamped = totalSeconds.coerceAtLeast(0)
+    val h = clamped / 3600
+    val m = (clamped % 3600) / 60
+    val s = clamped % 60
+    return if (h > 0) {
+        String.format(Locale.US, "%d:%02d:%02d", h, m, s)
+    } else {
+        String.format(Locale.US, "%02d:%02d", m, s)
+    }
+}
