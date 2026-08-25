@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -50,6 +52,9 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private val FeedbackButtonMargin = 16.dp
+
+// 初期位置（右上）をホーム画面ヘッダーの高さに合わせるための、ステータスバーからの追加余白
+private val FeedbackButtonInitialTopMargin = 16.dp
 
 private fun Context.findActivity(): Activity {
     var context = this
@@ -115,7 +120,6 @@ fun FitLogAppRoot() {
             }
         }
 
-        var dragOffset by remember { mutableStateOf(Offset.Zero) }
         var grabbed by remember { mutableStateOf(false) }
         // キャプチャ画像にボタン自身が写り込まないよう、撮影中だけ非表示にする
         var feedbackButtonVisible by remember { mutableStateOf(true) }
@@ -129,6 +133,19 @@ fun FitLogAppRoot() {
         val maxY = with(density) { ((maxHeight - FeedbackButtonSize) / 2).toPx() }
             .coerceAtLeast(0f)
         val minY = -maxY
+
+        // 初期位置は右上（ステータスバーの下、ホーム画面ヘッダーと同じ高さ付近）。中央からの
+        // 相対値で持っているため、最上部（minY）にステータスバー分と見た目の余白を足して求める
+        val statusBarTopPx = WindowInsets.statusBars.getTop(density)
+        var dragOffset by remember {
+            mutableStateOf(
+                Offset(
+                    x = 0f,
+                    y = (minY + statusBarTopPx + with(density) { FeedbackButtonInitialTopMargin.toPx() })
+                        .coerceIn(minY, maxY),
+                ),
+            )
+        }
 
         if (feedbackButtonVisible) {
             FeedbackButton(
