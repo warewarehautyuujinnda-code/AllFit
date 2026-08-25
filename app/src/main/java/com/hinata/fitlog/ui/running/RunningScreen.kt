@@ -71,6 +71,7 @@ fun RunningScreen(viewModel: RunningViewModel = viewModel()) {
             viewModel = viewModel,
             onOpenList = { route = RunningRoute.List },
             onOpenManualEntry = { route = RunningRoute.ManualEntry },
+            onOpenDetail = { item -> route = RunningRoute.Detail(item) },
         )
 
         RunningRoute.ManualEntry -> RunningManualEntryScreen(
@@ -108,6 +109,7 @@ private fun RunningMainScreen(
     viewModel: RunningViewModel,
     onOpenList: () -> Unit,
     onOpenManualEntry: () -> Unit,
+    onOpenDetail: (RunningEntity) -> Unit,
 ) {
     val context = LocalContext.current
     val items by viewModel.items.collectAsState()
@@ -186,7 +188,11 @@ private fun RunningMainScreen(
                     modifier = Modifier.padding(top = 8.dp),
                 ) {
                     items.take(RECENT_COUNT).forEach { item ->
-                        RunningRow(item = item, onDelete = { viewModel.delete(item) })
+                        RunningRow(
+                            item = item,
+                            onDelete = { viewModel.delete(item) },
+                            onClick = { onOpenDetail(item) },
+                        )
                     }
                 }
             }

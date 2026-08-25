@@ -86,6 +86,20 @@ fun RunningDetailScreen(
                 )
             }
 
+            if (!item.memo.isNullOrBlank()) {
+                Text(
+                    "メモ",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+                Text(
+                    item.memo,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
             Text("1分ごとの内訳", style = MaterialTheme.typography.titleMedium)

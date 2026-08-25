@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -42,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.hinata.fitlog.data.entity.StrengthEntity
 import com.hinata.fitlog.domain.ExerciseStats
 import com.hinata.fitlog.domain.dayStrengthOf
+import com.hinata.fitlog.domain.formatAmount
 import com.hinata.fitlog.domain.formatGrouped
 import com.hinata.fitlog.domain.partBadgesByDate
 import java.time.LocalDate
@@ -62,6 +65,8 @@ fun StrengthCalendarScreen(
 ) {
     // 日付を選び直すたびにその月へ合わせる。前後の月めくりは選択日を変えないので状態が残る
     var visibleMonth by remember(selectedDate) { mutableStateOf(YearMonth.from(selectedDate)) }
+    // 日付を選び直したら、前の日付のカードに対する詳細ダイアログは閉じる
+    var detailExercise by remember(selectedDate) { mutableStateOf<ExerciseStats?>(null) }
 
     val badges = remember(records) { partBadgesByDate(records) }
     val day = remember(records, selectedDate) { dayStrengthOf(records, selectedDate.toString()) }
@@ -137,6 +142,7 @@ fun StrengthCalendarScreen(
                         stats = stats,
                         dateLabel = selectedDate.toString(),
                         onDelete = { onDeleteRecords(stats.recordIds) },
+                        onClick = { detailExercise = stats },
                         modifier = Modifier.padding(top = 12.dp),
                     )
                 }
@@ -145,6 +151,14 @@ fun StrengthCalendarScreen(
             item { Box(modifier = Modifier.height(16.dp)) }
         }
     }
+
+    detailExercise?.let { stats ->
+        ExerciseRecordsDialog(
+            stats = stats,
+            records = records.filter { it.id in stats.recordIds },
+            onDismiss = { detailExercise = null },
+        )
+    }
 }
 
 @Composable
@@ -152,11 +166,14 @@ private fun ExerciseStatsCard(
     stats: ExerciseStats,
     dateLabel: String,
     onDelete: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showConfirm by remember { mutableStateOf(false) }
 
-    Card(modifier = modifier.fillMaxWidth()) {
+    // カード全体をタップで個々の記録の詳細を開く。右端の削除ボタンは自身の領域で
+    // タップを消費するため、このクリックとは競合しない
+    Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -256,4 +273,44 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
 @Composable
 private fun MetricDivider() {
     VerticalDivider(modifier = Modifier.height(32.dp))
+}
+
+/**
+ * カードは集計しか出さないため、その日その種目の個々の記録（重量×回数×セット数）を一覧で見せる。
+ * 新しい画面遷移は作らず、カレンダー画面内で完結するダイアログにしている。
+ */
+@Composable
+private fun ExerciseRecordsDialog(
+    stats: ExerciseStats,
+    records: List<StrengthEntity>,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stats.ex) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                records.forEachIndexed { index, record ->
+                    Text(
+                        "${index + 1}件目: ${describeRecord(record)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("閉じる") }
+        },
+    )
+}
+
+/** 重量・回数・セット数のうち入力がある項目だけをつなげる。すべて未入力（自重トレ等）もありうる */
+private fun describeRecord(record: StrengthEntity): String {
+    val parts = listOfNotNull(
+        record.weight?.let { "${formatAmount(it)} kg" },
+        record.reps?.let { "$it 回" },
+        record.sets?.let { "$it セット" },
+    )
+    return if (parts.isEmpty()) "記録あり" else parts.joinToString(" × ")
 }

@@ -20,4 +20,6 @@ data class RunningEntity(
     val min: Double? = null,
     /** 消費カロリー(kcal)。任意 */
     val kcal: Int? = null,
+    /** メモ。任意。version 4 で追加したため既存記録は null */
+    val memo: String? = null,
 )

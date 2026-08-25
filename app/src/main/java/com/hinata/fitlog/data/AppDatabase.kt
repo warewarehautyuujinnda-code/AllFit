@@ -28,7 +28,7 @@ import com.hinata.fitlog.data.entity.WeightEntity
         MealEntity::class,
         RunningSplitEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -72,6 +72,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * ランの記録にメモを足した。列の追加だけなので既存の記録はそのまま残る。
+         * 破壊的フォールバックは使わない（利用者の実データが消えるため）。
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE running ADD COLUMN memo TEXT")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -81,7 +91,8 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "fitlog.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
+                    .also { INSTANCE = it }
             }
         }
     }
