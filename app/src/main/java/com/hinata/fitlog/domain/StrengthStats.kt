@@ -136,3 +136,50 @@ fun frequentExercises(records: List<StrengthEntity>, limit: Int = 20): List<Exer
     )
     .take(limit)
     .map { (ex, list) -> ExerciseRef(ex, partOfExercise(list)) }
+
+// ---- 種目ごとの記録推移（FR-02 拡張。Issue #48） ----
+
+/** 種目推移グラフの期間切り替え */
+enum class TrendPeriod(val label: String) {
+    ONE_MONTH("1ヶ月"),
+    THREE_MONTHS("3ヶ月"),
+    ONE_YEAR("1年"),
+    ALL("全期間"),
+}
+
+/** [period] の絞り込み開始日（today基準、yyyy-MM-dd）。全期間なら絞り込まないため null */
+private fun TrendPeriod.sinceDate(today: LocalDate): String? = when (this) {
+    TrendPeriod.ONE_MONTH -> today.minusMonths(1).toString()
+    TrendPeriod.THREE_MONTHS -> today.minusMonths(3).toString()
+    TrendPeriod.ONE_YEAR -> today.minusYears(1).toString()
+    TrendPeriod.ALL -> null
+}
+
+/** 種目推移グラフの1点。value の求め方は [exerciseTrendOf] を参照 */
+data class ExerciseTrendPoint(val date: String, val value: Double)
+
+/**
+ * 種目ごとの記録推移。日付ごとに推定1RM（Epley式）の最大値を取り、古い→新しい順に並べる。
+ * 回数が未入力などでその日の1RMが計算できない場合は、代わりにその日の最大重量を使う
+ * （どちらも kg 単位で「伸び」を表す値になるため、同じ系列に混ぜても意味が通る）。
+ * 重量も無い（自重のみ等）記録しかない日は値そのものが定義できないため対象外にする。
+ *
+ * @param period 表示する期間。[TrendPeriod.ALL] なら絞り込まない
+ * @param today 期間の絞り込みに使う基準日
+ */
+fun exerciseTrendOf(
+    records: List<StrengthEntity>,
+    ex: String,
+    period: TrendPeriod = TrendPeriod.ALL,
+    today: LocalDate = LocalDate.now(),
+): List<ExerciseTrendPoint> {
+    val since = period.sinceDate(today)
+    return records
+        .filter { it.ex == ex && (since == null || it.date >= since) }
+        .groupBy { it.date }
+        .mapNotNull { (date, ofDay) ->
+            val value = oneRepMaxOf(ofDay) ?: ofDay.mapNotNull { it.weight }.maxOrNull()
+            value?.let { ExerciseTrendPoint(date, it) }
+        }
+        .sortedBy { it.date }
+}

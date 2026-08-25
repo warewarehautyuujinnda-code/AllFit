@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 private sealed interface StrengthRoute {
     data object Calendar : StrengthRoute
     data object Picker : StrengthRoute
+    data class Trend(val ref: ExerciseRef) : StrengthRoute
     data class Input(val ref: ExerciseRef) : StrengthRoute
 }
 
@@ -44,7 +45,11 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
     }
 
     BackHandler(enabled = route != StrengthRoute.Calendar) {
-        route = if (route is StrengthRoute.Input) StrengthRoute.Picker else StrengthRoute.Calendar
+        route = if (route is StrengthRoute.Input || route is StrengthRoute.Trend) {
+            StrengthRoute.Picker
+        } else {
+            StrengthRoute.Calendar
+        }
     }
 
     when (val current = route) {
@@ -63,6 +68,15 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
             today = today,
             onBack = { route = StrengthRoute.Calendar },
             onPick = { ref -> route = StrengthRoute.Input(ref) },
+            onViewTrend = { ref -> route = StrengthRoute.Trend(ref) },
+        )
+
+        is StrengthRoute.Trend -> ExerciseTrendScreen(
+            ref = current.ref,
+            records = items,
+            today = today,
+            onBack = { route = StrengthRoute.Picker },
+            onAddRecord = { route = StrengthRoute.Input(current.ref) },
         )
 
         is StrengthRoute.Input -> SetInputScreen(

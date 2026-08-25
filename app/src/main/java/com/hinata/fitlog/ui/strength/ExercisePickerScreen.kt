@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +62,7 @@ fun ExercisePickerScreen(
     today: LocalDate,
     onBack: () -> Unit,
     onPick: (ExerciseRef) -> Unit,
+    onViewTrend: (ExerciseRef) -> Unit,
 ) {
     // タブ0が「よくやる種目」。以降は BodyPart の並び順
     var tabIndex by remember { mutableIntStateOf(0) }
@@ -136,6 +138,7 @@ fun ExercisePickerScreen(
                             ref = ref,
                             elapsed = elapsedLabelOf(lastPerformed[ref.ex], today),
                             onClick = { onPick(ref) },
+                            onViewTrend = { onViewTrend(ref) },
                         )
                         HorizontalDivider()
                     }
@@ -188,6 +191,7 @@ private fun ExerciseRow(
     ref: ExerciseRef,
     elapsed: String?,
     onClick: () -> Unit,
+    onViewTrend: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -195,7 +199,8 @@ private fun ExerciseRow(
             .fillMaxWidth()
             .clickable { onClick() }
             .defaultMinSize(minHeight = 56.dp)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            // 右端に推移グラフ用のアイコンボタンを置くので、そちらの余白は自前の分だけにする
+            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
     ) {
         Box(
             modifier = Modifier
@@ -215,6 +220,14 @@ private fun ExerciseRow(
                 elapsed,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // 行全体のタップは記録入力へ。推移を見たいときはこちらから個別に開く
+        IconButton(onClick = onViewTrend) {
+            Icon(
+                Icons.Filled.ShowChart,
+                contentDescription = "${ref.ex}の推移を見る",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

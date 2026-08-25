@@ -293,4 +293,82 @@ class StrengthStatsTest {
             assertTrue("${part.label} のプリセットが空", exercisesOf(part, emptyList()).isNotEmpty())
         }
     }
+
+    // ---- 種目ごとの記録推移（Issue #48） ----
+
+    @Test
+    fun `種目の推移は日付ごとの推定1RMを日付順に並べる`() {
+        val records = listOf(
+            record(id = "a", date = "2026-08-20", ex = "ベンチプレス", weight = 70.0, reps = 5),
+            record(id = "b", date = "2026-08-01", ex = "ベンチプレス", weight = 60.0, reps = 10),
+            record(id = "c", date = "2026-08-10", ex = "ベンチプレス", weight = 65.0, reps = 8),
+            record(id = "d", date = "2026-08-10", ex = "スクワット", weight = 100.0, reps = 5),
+        )
+        val trend = exerciseTrendOf(records, "ベンチプレス")
+
+        assertEquals(listOf("2026-08-01", "2026-08-10", "2026-08-20"), trend.map { it.date })
+        // 60×(1+10/30)=80.0
+        assertEquals(80.0, trend[0].value, 1e-9)
+    }
+
+    @Test
+    fun `同じ日に複数セットあればその日の推定1RMの最大値を使う`() {
+        val records = listOf(
+            record(id = "a", date = "2026-08-20", ex = "ベンチプレス", weight = 60.0, reps = 10, sets = 3),
+            record(id = "b", date = "2026-08-20", ex = "ベンチプレス", weight = 80.0, reps = 3, sets = 1),
+        )
+        val trend = exerciseTrendOf(records, "ベンチプレス")
+        assertEquals(1, trend.size)
+        assertEquals(88.0, trend[0].value, 1e-9)
+    }
+
+    @Test
+    fun `回数が未入力で1RMが計算できない日はその日の最大重量を使う`() {
+        val records = listOf(
+            record(id = "a", date = "2026-08-01", ex = "懸垂", weight = 5.0, sets = 3),
+            record(id = "b", date = "2026-08-01", ex = "懸垂", weight = 10.0, sets = 3),
+        )
+        val trend = exerciseTrendOf(records, "懸垂")
+        assertEquals(1, trend.size)
+        assertEquals(10.0, trend[0].value, 1e-9)
+    }
+
+    @Test
+    fun `重量も回数も無い日は推移の対象外にする`() {
+        val records = listOf(
+            record(id = "a", date = "2026-08-01", ex = "腕立て伏せ", sets = 3),
+            record(id = "b", date = "2026-08-02", ex = "腕立て伏せ", weight = 5.0, reps = 20, sets = 3),
+        )
+        val trend = exerciseTrendOf(records, "腕立て伏せ")
+        assertEquals(listOf("2026-08-02"), trend.map { it.date })
+    }
+
+    @Test
+    fun `記録が0件や1件でも推移は落ちない`() {
+        assertTrue(exerciseTrendOf(emptyList(), "ベンチプレス").isEmpty())
+        assertTrue(exerciseTrendOf(listOf(record(ex = "スクワット", weight = 60.0, reps = 10)), "ベンチプレス").isEmpty())
+
+        val trend = exerciseTrendOf(listOf(record(ex = "ベンチプレス", weight = 60.0, reps = 10)), "ベンチプレス")
+        assertEquals(1, trend.size)
+        assertEquals(80.0, trend[0].value, 1e-9)
+    }
+
+    @Test
+    fun `期間を指定すると基準日からその期間分だけに絞り込む`() {
+        val today = LocalDate.of(2026, 8, 25)
+        val records = listOf(
+            record(id = "a", date = "2026-01-01", ex = "ベンチプレス", weight = 60.0, reps = 10),
+            record(id = "b", date = "2026-08-20", ex = "ベンチプレス", weight = 70.0, reps = 5),
+        )
+
+        assertEquals(
+            listOf("2026-08-20"),
+            exerciseTrendOf(records, "ベンチプレス", period = TrendPeriod.ONE_MONTH, today = today)
+                .map { it.date },
+        )
+        assertEquals(
+            2,
+            exerciseTrendOf(records, "ベンチプレス", period = TrendPeriod.ALL, today = today).size,
+        )
+    }
 }
