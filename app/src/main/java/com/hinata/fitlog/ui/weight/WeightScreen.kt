@@ -49,6 +49,7 @@ import kotlinx.coroutines.launch
 fun WeightScreen(viewModel: WeightViewModel = viewModel()) {
     val items by viewModel.items.collectAsState()
     val trend by viewModel.trend.collectAsState()
+    val period by viewModel.period.collectAsState()
     val goal by viewModel.goal.collectAsState()
 
     var date by remember { mutableStateOf(DateUtil.today()) }
@@ -122,6 +123,8 @@ fun WeightScreen(viewModel: WeightViewModel = viewModel()) {
                 WeightChart(
                     trend = trend,
                     goal = goal,
+                    period = period,
+                    onPeriodChange = viewModel::onPeriodChange,
                     modifier = Modifier.padding(top = 16.dp),
                     onGoalClick = { showGoalDialog = true },
                 )

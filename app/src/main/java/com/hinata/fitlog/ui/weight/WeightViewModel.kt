@@ -5,12 +5,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.WeightEntity
+import com.hinata.fitlog.domain.TrendPeriod
 import com.hinata.fitlog.domain.WeightTrend
 import com.hinata.fitlog.domain.parseRequiredDouble
 import com.hinata.fitlog.domain.weightTrendOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -25,13 +28,22 @@ class WeightViewModel(app: Application) : AndroidViewModel(app) {
     val items: StateFlow<List<WeightEntity>> = dao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** 体重推移グラフ（FR-07）。一覧と同じ購読から作るのでDBを2度読まない */
-    val trend: StateFlow<WeightTrend> = items
-        .map { weightTrendOf(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightTrend())
+    /** 体重推移グラフ（FR-07）の表示期間。既定は3ヶ月 */
+    private val _period = MutableStateFlow(TrendPeriod.THREE_MONTHS)
+    val period: StateFlow<TrendPeriod> = _period.asStateFlow()
+
+    /** 体重推移グラフ（FR-07）。一覧・期間と同じ購読から作るのでDBを2度読まない */
+    val trend: StateFlow<WeightTrend> = combine(items, _period) { w, p ->
+        weightTrendOf(w, p)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightTrend())
 
     /** 設定中の目標体重(kg)。未設定なら null */
     val goal: StateFlow<Double?> = goalStore.goal
+
+    /** グラフの表示期間を切り替える */
+    fun onPeriodChange(period: TrendPeriod) {
+        _period.value = period
+    }
 
     /**
      * 保存する。体重は必須。

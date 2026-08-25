@@ -2,6 +2,7 @@ package com.hinata.fitlog.domain
 
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.WeightEntity
+import java.time.LocalDate
 
 /**
  * 記録から表示用の集計を作る処理。Android に依存しない素の Kotlin で書いてあるので、
@@ -30,6 +31,13 @@ data class WeightTrend(
 
     companion object {
         const val MAX_POINTS = 30
+
+        /**
+         * 期間指定（[weightTrendOf]の period 版）での上限。期間は暦日数で区切るため
+         * 件数が事前に読めず、長期間・高頻度で記録するユーザーでも Canvas の描画が
+         * 重くならないよう安全弁として設ける
+         */
+        const val MAX_POINTS_FOR_PERIOD = 200
     }
 }
 
@@ -63,6 +71,22 @@ fun homeSummaryOf(
  */
 fun weightTrendOf(weights: List<WeightEntity>): WeightTrend =
     WeightTrend(weights.take(WeightTrend.MAX_POINTS).reversed())
+
+/**
+ * 体重推移（FR-07）を表示期間で絞って組み立てる。
+ * @param weights 日付降順の体重記録
+ * @param period 表示期間。ALL は絞り込みなし
+ * @param today 期間の下限日を決める基準日。呼び出し側は通常省略し、テストでのみ固定する
+ */
+fun weightTrendOf(
+    weights: List<WeightEntity>,
+    period: TrendPeriod,
+    today: LocalDate = LocalDate.now(),
+): WeightTrend {
+    val cutoff = period.cutoffDate(today)?.toString()
+    val inPeriod = if (cutoff == null) weights else weights.filter { it.date >= cutoff }
+    return WeightTrend(inPeriod.take(WeightTrend.MAX_POINTS_FOR_PERIOD).reversed())
+}
 
 /**
  * 指定日の食事の合計（FR-10）を求める。
