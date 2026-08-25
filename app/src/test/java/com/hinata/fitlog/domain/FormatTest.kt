@@ -91,6 +91,21 @@ class FormatTest {
     }
 
     @Test
+    fun `ペースの秒換算はformatPaceと同じ式で求める`() {
+        // formatPace(10.0, 55.0) は 55*60/10=330秒 → "5'30\""
+        assertEquals(330.0, paceSecondsPerKm(10.0, 55.0)!!, 1e-9)
+    }
+
+    @Test
+    fun `距離や時間が計算できない値ならペースの秒換算も出さない`() {
+        assertNull(paceSecondsPerKm(null, 30.0))
+        assertNull(paceSecondsPerKm(5.0, null))
+        assertNull(paceSecondsPerKm(0.0, 30.0))
+        assertNull(paceSecondsPerKm(Double.NaN, 30.0))
+        assertNull(paceSecondsPerKm(5.0, Double.POSITIVE_INFINITY))
+    }
+
+    @Test
     fun `経過時間は分と秒で表示する`() {
         assertEquals("00:00", formatElapsed(0))
         assertEquals("05:09", formatElapsed(309))

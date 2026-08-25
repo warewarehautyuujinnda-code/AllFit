@@ -61,19 +61,27 @@ fun formatShortDate(date: String): String {
 }
 
 /**
- * ペース（分/km）を 5'30" 形式で返す（FR-03）。
+ * ペース（分/km）の秒換算。[formatPace] の文字列表示のもとになる数値版で、
+ * ランニンググラフの縦軸のように文字列でなく数値のペース/スピードが要る場所で使う。
  * 距離・時間のどちらかが未入力・0以下・非有限値の場合は計算できないため null を返す。
  *
  * 保存前の入力中の文字列からも呼ばれるため、検証を通っていない値が渡ってくる前提で書く。
  * NaN は大小比較がすべて false になり 0以下チェックをすり抜けるうえ、
- * roundToInt() に渡すと例外になるので isFinite() で先に弾く。
+ * 呼び出し側の丸め処理で例外になるので isFinite() で先に弾く。
  */
-fun formatPace(dist: Double?, min: Double?): String? {
+fun paceSecondsPerKm(dist: Double?, min: Double?): Double? {
     if (dist == null || min == null) return null
     if (!dist.isFinite() || !min.isFinite()) return null
     if (dist <= 0.0 || min <= 0.0) return null
-    // 秒に丸めてから分と秒に分けることで、59.6秒が「0'60"」になるのを防ぐ
-    val totalSeconds = (min * 60.0 / dist).roundToInt()
+    return min * 60.0 / dist
+}
+
+/**
+ * ペース（分/km）を 5'30" 形式で返す（FR-03）。
+ * 秒に丸めてから分と秒に分けることで、59.6秒が「0'60"」になるのを防ぐ。
+ */
+fun formatPace(dist: Double?, min: Double?): String? {
+    val totalSeconds = paceSecondsPerKm(dist, min)?.roundToInt() ?: return null
     return String.format(Locale.US, "%d'%02d\"", totalSeconds / 60, totalSeconds % 60)
 }
 
