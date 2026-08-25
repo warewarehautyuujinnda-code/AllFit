@@ -104,15 +104,16 @@ fun bodyPartOf(record: StrengthEntity): BodyPart? =
     BodyPart.fromId(record.part) ?: presetPartOf(record.ex)
 
 /**
- * 部位タブに出す種目一覧。プリセットの並びを保ったまま、
- * その部位で記録済みなのにマスタに無い種目（自由入力）を末尾に足す。
+ * 部位タブに出す種目一覧。一度も記録していないプリセットは出さない。
+ * プリセットの並びを保ったまま、記録済みのものだけを残し、
+ * マスタに無い記録済みの種目（自由入力）を末尾に足す。
  */
 fun exercisesOf(part: BodyPart, records: List<StrengthEntity>): List<String> {
-    val presets = presetExercises(part)
-    val extra = records
+    val recorded = records
         .filter { bodyPartOf(it) == part }
         .map { it.ex }
         .distinct()
-        .filterNot { it in presets }
+    val presets = presetExercises(part).filter { it in recorded }
+    val extra = recorded.filterNot { it in presets }
     return presets + extra
 }

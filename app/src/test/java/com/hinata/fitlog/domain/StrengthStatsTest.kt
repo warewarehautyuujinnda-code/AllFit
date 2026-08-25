@@ -283,14 +283,24 @@ class StrengthStatsTest {
             record(id = "c", ex = "スクワット", part = "leg"),
         )
         val chest = exercisesOf(BodyPart.CHEST, records)
-        assertEquals(presetExercises(BodyPart.CHEST) + listOf("自作の胸トレ"), chest)
+        assertEquals(listOf("ベンチプレス", "自作の胸トレ"), chest)
         assertEquals(1, chest.count { it == "ベンチプレス" })
     }
 
     @Test
-    fun `記録が無くてもプリセットの種目は並ぶ`() {
+    fun `記録が無い部位はプリセットも一覧に出ない`() {
         BodyPart.entries.forEach { part ->
-            assertTrue("${part.label} のプリセットが空", exercisesOf(part, emptyList()).isNotEmpty())
+            assertTrue("${part.label} の一覧が空でない", exercisesOf(part, emptyList()).isEmpty())
         }
+    }
+
+    @Test
+    fun `記録した部位でも未記録のプリセットは一覧に出ない`() {
+        val records = listOf(
+            record(id = "a", ex = "スクワット", part = "leg"),
+        )
+        val leg = exercisesOf(BodyPart.LEG, records)
+        assertEquals(listOf("スクワット"), leg)
+        assertTrue("レッグプレス" !in leg)
     }
 }
