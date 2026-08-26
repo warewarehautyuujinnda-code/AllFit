@@ -53,7 +53,7 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
      * 黙って捨てずに保存を失敗させる。
      * @return 入力が正しく保存できたら true
      */
-    fun save(date: String, distText: String, minText: String): Boolean {
+    fun save(date: String, distText: String, minText: String, memoText: String): Boolean {
         if (date.isBlank()) return false
 
         val dist = parseRequiredDouble(distText) ?: return false
@@ -61,7 +61,13 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             repository.saveManual(
-                RunningEntity(date = date, dist = dist, min = min.value, kcal = null)
+                RunningEntity(
+                    date = date,
+                    dist = dist,
+                    min = min.value,
+                    kcal = null,
+                    memo = memoText.trim().ifBlank { null },
+                )
             )
         }
         return true

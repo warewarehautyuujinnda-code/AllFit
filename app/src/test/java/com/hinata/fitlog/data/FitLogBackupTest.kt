@@ -24,7 +24,16 @@ class FitLogBackupTest {
         strength = listOf(
             StrengthEntity(id = "s1", date = "2026-08-11", ex = "ベンチプレス", weight = 60.0, reps = 10, sets = 3)
         ),
-        running = listOf(RunningEntity(id = "r1", date = "2026-08-11", dist = 5.0, min = 27.5, kcal = 300)),
+        running = listOf(
+            RunningEntity(
+                id = "r1",
+                date = "2026-08-11",
+                dist = 5.0,
+                min = 27.5,
+                kcal = 300,
+                memo = "気持ちよく走れた",
+            )
+        ),
         meal = listOf(MealEntity(id = "m1", date = "2026-08-11", name = "鶏むね肉", kcal = 620, p = 45.0)),
     )
 

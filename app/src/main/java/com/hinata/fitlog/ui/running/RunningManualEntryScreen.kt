@@ -41,11 +41,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun RunningManualEntryScreen(
     onBack: () -> Unit,
-    onSave: (date: String, distText: String, minText: String) -> Boolean,
+    onSave: (date: String, distText: String, minText: String, memoText: String) -> Boolean,
 ) {
     var date by remember { mutableStateOf(DateUtil.today()) }
     var dist by remember { mutableStateOf("") }
     var minutes by remember { mutableStateOf("") }
+    var memo by remember { mutableStateOf("") }
 
     val pace = formatPace(dist.trim().toDoubleOrNull(), minutes.trim().toDoubleOrNull())
 
@@ -92,6 +93,13 @@ fun RunningManualEntryScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
 
+            OutlinedTextField(
+                value = memo,
+                onValueChange = { memo = it },
+                label = { Text("メモ ※任意") },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
+
             Text(
                 text = if (pace != null) "ペース: $pace /km" else "ペース: 距離と時間を入力すると表示されます",
                 style = MaterialTheme.typography.bodyMedium,
@@ -100,11 +108,12 @@ fun RunningManualEntryScreen(
 
             Button(
                 onClick = {
-                    val ok = onSave(date, dist, minutes)
+                    val ok = onSave(date, dist, minutes, memo)
                     scope.launch {
                         if (ok) {
                             dist = ""
                             minutes = ""
+                            memo = ""
                             snackbarHostState.showSnackbar("保存しました")
                         } else {
                             snackbarHostState.showSnackbar("距離を入力し、時間は数値で入力してください")
