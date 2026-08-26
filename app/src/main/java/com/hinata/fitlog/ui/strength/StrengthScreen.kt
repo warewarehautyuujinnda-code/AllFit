@@ -68,24 +68,22 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
         is StrengthRoute.Input -> SetInputScreen(
             ref = current.ref,
             date = selectedDate,
-            lastRecord = items.firstOrNull { it.ex == current.ref.ex },
+            lastRecord = items.firstOrNull { it.record.ex == current.ref.ex },
             snackbarHostState = snackbarHostState,
             onDateChange = { selectedDate = it },
             onBack = { route = StrengthRoute.Picker },
-            onSave = { weight, reps, sets ->
+            onSave = { sets ->
                 val ok = viewModel.save(
                     date = selectedDate,
                     exText = current.ref.ex,
                     part = current.ref.part,
-                    weightText = weight,
-                    repsText = reps,
-                    setsText = sets,
+                    sets = sets,
                 )
                 if (ok) route = StrengthRoute.Calendar
                 scope.launch {
                     snackbarHostState.showSnackbar(
                         if (ok) "保存しました"
-                        else "重量・回数・セット数は正の数で入力してください"
+                        else "重量・回数は正の数で入力してください"
                     )
                 }
             },

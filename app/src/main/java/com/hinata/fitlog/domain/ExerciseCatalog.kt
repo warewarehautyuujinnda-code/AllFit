@@ -1,6 +1,7 @@
 package com.hinata.fitlog.domain
 
 import com.hinata.fitlog.data.entity.StrengthEntity
+import com.hinata.fitlog.data.entity.StrengthRecordWithSets
 
 /**
  * 部位ごとの種目マスタ。コード内の定数として持ち、外部から取得しない。
@@ -108,10 +109,10 @@ fun bodyPartOf(record: StrengthEntity): BodyPart? =
  * プリセットの並びを保ったまま、記録済みのものだけを残し、
  * マスタに無い記録済みの種目（自由入力）を末尾に足す。
  */
-fun exercisesOf(part: BodyPart, records: List<StrengthEntity>): List<String> {
+fun exercisesOf(part: BodyPart, records: List<StrengthRecordWithSets>): List<String> {
     val recorded = records
-        .filter { bodyPartOf(it) == part }
-        .map { it.ex }
+        .filter { bodyPartOf(it.record) == part }
+        .map { it.record.ex }
         .distinct()
     val presets = presetExercises(part).filter { it in recorded }
     val extra = recorded.filterNot { it in presets }

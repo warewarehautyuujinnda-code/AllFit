@@ -30,6 +30,7 @@ class FitLogRepository(private val db: AppDatabase) {
     private val runningDao = db.runningDao()
     private val mealDao = db.mealDao()
     private val runningSplitDao = db.runningSplitDao()
+    private val strengthSetDao = db.strengthSetDao()
 
     /**
      * 書き出し用の JSON 設定。
@@ -67,6 +68,7 @@ class FitLogRepository(private val db: AppDatabase) {
             running = runningDao.getAll(),
             meal = mealDao.getAll(),
             runningSplit = runningSplitDao.getAll(),
+            strengthSet = strengthSetDao.getAll(),
         )
         exportJson.encodeToString(FitLogBackup.serializer(), backup)
     }
@@ -97,6 +99,7 @@ class FitLogRepository(private val db: AppDatabase) {
                 runningDao.upsertAll(backup.running)
                 mealDao.upsertAll(backup.meal)
                 runningSplitDao.upsertAll(backup.runningSplit)
+                strengthSetDao.upsertAll(backup.strengthSet)
             }
             backup
         }
@@ -110,6 +113,7 @@ class FitLogRepository(private val db: AppDatabase) {
             runningDao.deleteAll()
             mealDao.deleteAll()
             runningSplitDao.deleteAll()
+            strengthSetDao.deleteAll()
         }
     }
 }
