@@ -5,14 +5,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.domain.HomeSummary
+import com.hinata.fitlog.domain.TrendPeriod
 import com.hinata.fitlog.domain.WeightTrend
 import com.hinata.fitlog.domain.homeSummaryOf
 import com.hinata.fitlog.domain.weightTrendOf
 import com.hinata.fitlog.ui.common.DateUtil
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -33,10 +35,19 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             homeSummaryOf(w, m, DateUtil.today())
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeSummary())
 
+    /** 体重推移グラフ（FR-07）の表示期間。既定は3ヶ月 */
+    private val _weightTrendPeriod = MutableStateFlow(TrendPeriod.THREE_MONTHS)
+    val weightTrendPeriod: StateFlow<TrendPeriod> = _weightTrendPeriod.asStateFlow()
+
     /** 体重推移グラフ（FR-07） */
-    val weightTrend: StateFlow<WeightTrend> = weights
-        .map { weightTrendOf(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightTrend())
+    val weightTrend: StateFlow<WeightTrend> = combine(weights, _weightTrendPeriod) { w, p ->
+        weightTrendOf(w, p)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightTrend())
+
+    /** 体重推移グラフの表示期間を切り替える */
+    fun onWeightTrendPeriodChange(period: TrendPeriod) {
+        _weightTrendPeriod.value = period
+    }
 
     /** 目標体重(kg)。設定の入り口は体重タブにあり、ここでは表示にだけ使う */
     val weightGoal: StateFlow<Double?> = (app as FitLogApp).weightGoalStore.goal

@@ -2,6 +2,7 @@ package com.hinata.fitlog.ui.home
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,9 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,6 +32,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hinata.fitlog.data.entity.WeightEntity
+import com.hinata.fitlog.domain.TrendPeriod
 import com.hinata.fitlog.domain.WeightTrend
 import com.hinata.fitlog.domain.formatAmount
 import com.hinata.fitlog.domain.formatShortDate
@@ -41,12 +47,16 @@ import com.hinata.fitlog.domain.formatTrend
  * 記録が0件・1件でも落ちないように、描画は2件以上のときだけ行う。
  *
  * @param goal 目標体重(kg)。未設定なら null
+ * @param period 選択中の表示期間
+ * @param onPeriodChange 期間チップが選ばれたときに呼ばれる
  * @param onGoalClick 目標体重の設定を開く。設定の入り口を持たない画面では null
  */
 @Composable
 fun WeightChart(
     trend: WeightTrend,
     goal: Double?,
+    period: TrendPeriod,
+    onPeriodChange: (TrendPeriod) -> Unit,
     modifier: Modifier = Modifier,
     onGoalClick: (() -> Unit)? = null,
 ) {
@@ -55,6 +65,12 @@ fun WeightChart(
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("体重の推移", style = MaterialTheme.typography.titleMedium)
+
+            PeriodSelector(
+                selected = period,
+                onSelect = onPeriodChange,
+                modifier = Modifier.padding(top = 8.dp),
+            )
 
             Row(
                 modifier = Modifier.padding(top = 8.dp),
@@ -93,6 +109,40 @@ fun WeightChart(
                     }
                 }
             }
+        }
+    }
+}
+
+/** 表示期間の切り替え（1ヶ月/3ヶ月/1年/全期間）。選択中の1つだけがオンになる */
+@Composable
+private fun PeriodSelector(
+    selected: TrendPeriod,
+    onSelect: (TrendPeriod) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TrendPeriod.entries.forEach { period ->
+            val isSelected = period == selected
+            FilterChip(
+                selected = isSelected,
+                onClick = { onSelect(period) },
+                label = { Text(period.label) },
+                // 選択状態を色だけに頼らず伝えるためのチェックマーク
+                leadingIcon = if (isSelected) {
+                    {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(FilterChipDefaults.IconSize),
+                        )
+                    }
+                } else {
+                    null
+                },
+            )
         }
     }
 }
