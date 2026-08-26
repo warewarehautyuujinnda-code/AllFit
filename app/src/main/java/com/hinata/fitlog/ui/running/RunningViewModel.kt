@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.RunningSplitEntity
+import com.hinata.fitlog.domain.RunningMetric
 import com.hinata.fitlog.domain.RunningTrend
+import com.hinata.fitlog.domain.RunningTrendPeriod
 import com.hinata.fitlog.domain.monthlyTotalDistance
 import com.hinata.fitlog.domain.parseOptionalDouble
 import com.hinata.fitlog.domain.parseRequiredDouble
@@ -15,8 +17,10 @@ import com.hinata.fitlog.running.RunTrackState
 import com.hinata.fitlog.running.RunTracker
 import com.hinata.fitlog.ui.common.DateUtil
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -31,10 +35,18 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
     val items: StateFlow<List<RunningEntity>> = repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** メイン画面のグラフ用（直近30件、古い順） */
-    val trend: StateFlow<RunningTrend> = items
-        .map { runningTrendOf(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RunningTrend())
+    /** グラフの表示期間。デフォルトは直近3ヶ月 */
+    private val _trendPeriod = MutableStateFlow(RunningTrendPeriod.THREE_MONTHS)
+    val trendPeriod: StateFlow<RunningTrendPeriod> = _trendPeriod
+
+    /** グラフで見る指標。デフォルトは今までと同じ距離 */
+    private val _trendMetric = MutableStateFlow(RunningMetric.DISTANCE)
+    val trendMetric: StateFlow<RunningMetric> = _trendMetric
+
+    /** メイン画面のグラフ用（選択中の期間で絞った、直近30件・古い順） */
+    val trend: StateFlow<RunningTrend> = combine(items, _trendPeriod) { list, period ->
+        runningTrendOf(list, period)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RunningTrend())
 
     /** 今月の合計距離(km) */
     val monthlyTotalKm: StateFlow<Double> = items
@@ -43,6 +55,14 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
 
     /** GPS計測中の状態（開始/停止、経過時間、距離） */
     val trackState: StateFlow<RunTrackState> = RunTracker.state
+
+    fun selectTrendPeriod(period: RunningTrendPeriod) {
+        _trendPeriod.value = period
+    }
+
+    fun selectTrendMetric(metric: RunningMetric) {
+        _trendMetric.value = metric
+    }
 
     /** 記録の1分ごとの内訳。GPS計測でない記録は空になる */
     fun splitsFor(runId: String): Flow<List<RunningSplitEntity>> = repository.observeSplits(runId)

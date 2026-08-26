@@ -114,6 +114,8 @@ private fun RunningMainScreen(
     val context = LocalContext.current
     val items by viewModel.items.collectAsState()
     val trend by viewModel.trend.collectAsState()
+    val trendPeriod by viewModel.trendPeriod.collectAsState()
+    val trendMetric by viewModel.trendMetric.collectAsState()
     val monthlyTotalKm by viewModel.monthlyTotalKm.collectAsState()
     val trackState by viewModel.trackState.collectAsState()
 
@@ -149,7 +151,12 @@ private fun RunningMainScreen(
 
             RunningChart(
                 trend = trend,
+                latest = items.firstOrNull(),
                 monthlyTotalKm = monthlyTotalKm,
+                period = trendPeriod,
+                metric = trendMetric,
+                onPeriodChange = viewModel::selectTrendPeriod,
+                onMetricChange = viewModel::selectTrendMetric,
                 modifier = Modifier.padding(top = 12.dp),
             )
 
