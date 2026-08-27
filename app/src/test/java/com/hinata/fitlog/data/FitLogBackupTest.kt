@@ -3,6 +3,7 @@ package com.hinata.fitlog.data
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.StrengthEntity
+import com.hinata.fitlog.data.entity.StrengthSetEntity
 import com.hinata.fitlog.data.entity.WeightEntity
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -22,7 +23,11 @@ class FitLogBackupTest {
         exportedAt = "2026-08-11T00:00:00Z",
         weight = listOf(WeightEntity(id = "w1", date = "2026-08-11", weight = 70.2, fat = 18.4)),
         strength = listOf(
-            StrengthEntity(id = "s1", date = "2026-08-11", ex = "ベンチプレス", weight = 60.0, reps = 10, sets = 3)
+            StrengthEntity(id = "s1", date = "2026-08-11", ex = "ベンチプレス")
+        ),
+        strengthSet = listOf(
+            StrengthSetEntity(id = "ss1", recordId = "s1", setIndex = 0, weight = 60.0, reps = 10),
+            StrengthSetEntity(id = "ss2", recordId = "s1", setIndex = 1, weight = 55.0, reps = 8),
         ),
         running = listOf(
             RunningEntity(

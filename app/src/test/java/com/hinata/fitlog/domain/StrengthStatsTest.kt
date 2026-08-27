@@ -1,43 +1,58 @@
 package com.hinata.fitlog.domain
 
 import com.hinata.fitlog.data.entity.StrengthEntity
+import com.hinata.fitlog.data.entity.StrengthRecordWithSets
+import com.hinata.fitlog.data.entity.StrengthSetEntity
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 筋トレの集計（総ボリューム・推定1RM・レップ数・カレンダーのバッジ・最終実施日） */
+/** 筋トレの集計(総ボリューム・推定1RM・レップ数・カレンダーのバッジ・最終実施日) */
 class StrengthStatsTest {
+
+    /** 1セット分の(重量, 回数)。テストで named args を使えるようにするための入れ物 */
+    private fun s(weight: Double? = null, reps: Int? = null): Pair<Double?, Int?> = weight to reps
+
+    private fun entity(
+        id: String = "x",
+        date: String = "2026-08-20",
+        ex: String = "ベンチプレス",
+        part: String? = null,
+    ) = StrengthEntity(id, date, ex, part)
 
     private fun record(
         id: String = "x",
         date: String = "2026-08-20",
         ex: String = "ベンチプレス",
         part: String? = null,
-        weight: Double? = null,
-        reps: Int? = null,
-        sets: Int? = null,
-    ) = StrengthEntity(id, date, ex, part, weight, reps, sets)
+        sets: List<Pair<Double?, Int?>> = emptyList(),
+    ) = StrengthRecordWithSets(
+        record = entity(id, date, ex, part),
+        sets = sets.mapIndexed { index, (weight, reps) ->
+            StrengthSetEntity(recordId = id, setIndex = index, weight = weight, reps = reps)
+        },
+    )
 
     // ---- 総ボリューム ----
 
     @Test
-    fun `ボリュームは重量と回数とセット数の積を足し合わせる`() {
+    fun `ボリュームはセットごとの重量と回数の積を足し合わせる`() {
         val records = listOf(
-            record(id = "a", weight = 60.0, reps = 10, sets = 3),
-            record(id = "b", weight = 50.0, reps = 12, sets = 2),
+            record(id = "a", sets = List(3) { s(60.0, 10) }),
+            record(id = "b", sets = List(2) { s(50.0, 12) }),
         )
         assertEquals(60.0 * 10 * 3 + 50.0 * 12 * 2, volumeOf(records), 1e-9)
     }
 
     @Test
-    fun `未入力を含む記録はボリューム0として足す`() {
+    fun `未入力を含むセットはボリューム0として足す`() {
         val records = listOf(
-            record(id = "a", weight = 60.0, reps = 10, sets = 3),
-            record(id = "b", reps = 10, sets = 3),
-            record(id = "c", weight = 60.0, sets = 3),
-            record(id = "d", weight = 60.0, reps = 10),
+            record(id = "a", sets = List(3) { s(60.0, 10) }),
+            record(id = "b", sets = List(3) { s(reps = 10) }),
+            record(id = "c", sets = List(3) { s(weight = 60.0) }),
+            record(id = "d", sets = emptyList()),
         )
         assertEquals(1800.0, volumeOf(records), 1e-9)
     }
@@ -47,24 +62,24 @@ class StrengthStatsTest {
         assertEquals(0.0, volumeOf(emptyList()), 1e-9)
     }
 
-    // ---- 推定1RM（Epley式） ----
+    // ---- 推定1RM(Epley式) ----
 
     @Test
     fun `推定1RMは種目内の最大値を取る`() {
         val records = listOf(
-            record(id = "a", weight = 60.0, reps = 10, sets = 3),
-            record(id = "b", weight = 80.0, reps = 3, sets = 1),
+            record(id = "a", sets = List(3) { s(60.0, 10) }),
+            record(id = "b", sets = listOf(s(80.0, 3))),
         )
         // 60×(1+10/30)=80.0 と 80×(1+3/30)=88.0 の大きい方
         assertEquals(88.0, oneRepMaxOf(records)!!, 1e-9)
     }
 
     @Test
-    fun `重量か回数が未入力の記録は推定1RMの対象外`() {
+    fun `重量か回数が未入力のセットは推定1RMの対象外`() {
         val records = listOf(
-            record(id = "a", weight = 100.0, sets = 3),
-            record(id = "b", reps = 20, sets = 3),
-            record(id = "c", weight = 60.0, reps = 10, sets = 3),
+            record(id = "a", sets = List(3) { s(weight = 100.0) }),
+            record(id = "b", sets = List(3) { s(reps = 20) }),
+            record(id = "c", sets = List(3) { s(60.0, 10) }),
         )
         assertEquals(80.0, oneRepMaxOf(records)!!, 1e-9)
     }
@@ -72,21 +87,23 @@ class StrengthStatsTest {
     @Test
     fun `1件も計算できなければ推定1RMは出さない`() {
         assertNull(oneRepMaxOf(emptyList()))
-        assertNull(oneRepMaxOf(listOf(record(id = "a"), record(id = "b", sets = 3))))
+        assertNull(
+            oneRepMaxOf(listOf(record(id = "a", sets = emptyList()), record(id = "b", sets = List(3) { s() })))
+        )
     }
 
     @Test
     fun `記録が1件でも推定1RMは出せる`() {
-        assertEquals(80.0, oneRepMaxOf(listOf(record(weight = 60.0, reps = 10)))!!, 1e-9)
+        assertEquals(80.0, oneRepMaxOf(listOf(record(sets = listOf(s(60.0, 10)))))!!, 1e-9)
     }
 
     // ---- レップ数・セット数 ----
 
     @Test
-    fun `総レップ数は回数とセット数の積の合計`() {
+    fun `総レップ数はセットごとの回数の合計`() {
         val records = listOf(
-            record(id = "a", weight = 60.0, reps = 10, sets = 3),
-            record(id = "b", weight = 50.0, reps = 12, sets = 2),
+            record(id = "a", sets = List(3) { s(60.0, 10) }),
+            record(id = "b", sets = List(2) { s(50.0, 12) }),
         )
         assertEquals(54, totalRepsOf(records))
     }
@@ -94,9 +111,9 @@ class StrengthStatsTest {
     @Test
     fun `未入力があっても総レップ数とセット数は0として足す`() {
         val records = listOf(
-            record(id = "a", reps = 10),
-            record(id = "b", sets = 3),
-            record(id = "c", reps = 8, sets = 2),
+            record(id = "a", sets = emptyList()),
+            record(id = "b", sets = List(3) { s() }),
+            record(id = "c", sets = List(2) { s(reps = 8) }),
         )
         assertEquals(16, totalRepsOf(records))
         assertEquals(5, setCountOf(records))
@@ -104,8 +121,13 @@ class StrengthStatsTest {
 
     @Test
     fun `最大レップ数は回数が全て未入力なら出さない`() {
-        assertEquals(12, maxRepsOf(listOf(record(id = "a", reps = 10), record(id = "b", reps = 12))))
-        assertNull(maxRepsOf(listOf(record(id = "a", sets = 3), record(id = "b"))))
+        assertEquals(
+            12,
+            maxRepsOf(
+                listOf(record(id = "a", sets = listOf(s(reps = 10))), record(id = "b", sets = listOf(s(reps = 12))))
+            ),
+        )
+        assertNull(maxRepsOf(listOf(record(id = "a", sets = List(3) { s() }), record(id = "b", sets = emptyList()))))
         assertNull(maxRepsOf(emptyList()))
     }
 
@@ -114,10 +136,10 @@ class StrengthStatsTest {
     @Test
     fun `選択日の集計はその日の記録だけを種目ごとにまとめる`() {
         val records = listOf(
-            record(id = "a", date = "2026-08-20", ex = "ベンチプレス", weight = 60.0, reps = 10, sets = 3),
-            record(id = "b", date = "2026-08-20", ex = "ベンチプレス", weight = 80.0, reps = 3, sets = 1),
-            record(id = "c", date = "2026-08-20", ex = "スクワット", weight = 100.0, reps = 5, sets = 2),
-            record(id = "d", date = "2026-08-19", ex = "ベンチプレス", weight = 60.0, reps = 10, sets = 3),
+            record(id = "a", date = "2026-08-20", ex = "ベンチプレス", sets = List(3) { s(60.0, 10) }),
+            record(id = "b", date = "2026-08-20", ex = "ベンチプレス", sets = listOf(s(80.0, 3))),
+            record(id = "c", date = "2026-08-20", ex = "スクワット", sets = List(2) { s(100.0, 5) }),
+            record(id = "d", date = "2026-08-19", ex = "ベンチプレス", sets = List(3) { s(60.0, 10) }),
         )
         val day = dayStrengthOf(records, "2026-08-20")
 
@@ -270,9 +292,9 @@ class StrengthStatsTest {
 
     @Test
     fun `保存された部位は種目名より優先する`() {
-        assertEquals(BodyPart.LEG, bodyPartOf(record(ex = "ベンチプレス", part = "leg")))
-        assertEquals(BodyPart.CHEST, bodyPartOf(record(ex = "ベンチプレス")))
-        assertNull(bodyPartOf(record(ex = "謎のトレ", part = "unknown")))
+        assertEquals(BodyPart.LEG, bodyPartOf(entity(ex = "ベンチプレス", part = "leg")))
+        assertEquals(BodyPart.CHEST, bodyPartOf(entity(ex = "ベンチプレス")))
+        assertNull(bodyPartOf(entity(ex = "謎のトレ", part = "unknown")))
     }
 
     @Test

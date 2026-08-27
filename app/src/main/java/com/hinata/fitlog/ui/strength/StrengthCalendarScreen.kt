@@ -41,7 +41,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hinata.fitlog.data.entity.StrengthEntity
+import com.hinata.fitlog.data.entity.StrengthRecordWithSets
+import com.hinata.fitlog.data.entity.StrengthSetEntity
 import com.hinata.fitlog.domain.ExerciseStats
 import com.hinata.fitlog.domain.dayStrengthOf
 import com.hinata.fitlog.domain.formatAmount
@@ -55,7 +56,7 @@ import java.time.YearMonth
  */
 @Composable
 fun StrengthCalendarScreen(
-    records: List<StrengthEntity>,
+    records: List<StrengthRecordWithSets>,
     today: LocalDate,
     selectedDate: LocalDate,
     snackbarHostState: SnackbarHostState,
@@ -155,7 +156,7 @@ fun StrengthCalendarScreen(
     detailExercise?.let { stats ->
         ExerciseRecordsDialog(
             stats = stats,
-            records = records.filter { it.id in stats.recordIds },
+            records = records.filter { it.record.id in stats.recordIds },
             onDismiss = { detailExercise = null },
         )
     }
@@ -276,13 +277,13 @@ private fun MetricDivider() {
 }
 
 /**
- * カードは集計しか出さないため、その日その種目の個々の記録（重量×回数×セット数）を一覧で見せる。
+ * カードは集計しか出さないため、その日その種目の個々の記録をセット単位で一覧に見せる。
  * 新しい画面遷移は作らず、カレンダー画面内で完結するダイアログにしている。
  */
 @Composable
 private fun ExerciseRecordsDialog(
     stats: ExerciseStats,
-    records: List<StrengthEntity>,
+    records: List<StrengthRecordWithSets>,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -292,10 +293,18 @@ private fun ExerciseRecordsDialog(
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 records.forEachIndexed { index, record ->
                     Text(
-                        "${index + 1}件目: ${describeRecord(record)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(vertical = 4.dp),
+                        "${index + 1}件目",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = if (index == 0) 0.dp else 12.dp),
                     )
+                    record.sets.sortedBy { it.setIndex }.forEachIndexed { setIndex, set ->
+                        Text(
+                            "${setIndex + 1}セット目: ${describeSet(set)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+                        )
+                    }
                 }
             }
         },
@@ -305,12 +314,11 @@ private fun ExerciseRecordsDialog(
     )
 }
 
-/** 重量・回数・セット数のうち入力がある項目だけをつなげる。すべて未入力（自重トレ等）もありうる */
-private fun describeRecord(record: StrengthEntity): String {
+/** 重量・回数のうち入力がある項目だけをつなげる。両方未入力（自重トレ等）もありうる */
+private fun describeSet(set: StrengthSetEntity): String {
     val parts = listOfNotNull(
-        record.weight?.let { "${formatAmount(it)} kg" },
-        record.reps?.let { "$it 回" },
-        record.sets?.let { "$it セット" },
+        set.weight?.let { "${formatAmount(it)} kg" },
+        set.reps?.let { "$it 回" },
     )
     return if (parts.isEmpty()) "記録あり" else parts.joinToString(" × ")
 }

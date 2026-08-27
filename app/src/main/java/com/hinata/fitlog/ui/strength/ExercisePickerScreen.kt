@@ -40,7 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.hinata.fitlog.data.entity.StrengthEntity
+import com.hinata.fitlog.data.entity.StrengthRecordWithSets
 import com.hinata.fitlog.domain.BodyPart
 import com.hinata.fitlog.domain.ExerciseRef
 import com.hinata.fitlog.domain.bodyPartLabel
@@ -57,7 +57,7 @@ import java.time.LocalDate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisePickerScreen(
-    records: List<StrengthEntity>,
+    records: List<StrengthRecordWithSets>,
     today: LocalDate,
     onBack: () -> Unit,
     onPick: (ExerciseRef) -> Unit,
