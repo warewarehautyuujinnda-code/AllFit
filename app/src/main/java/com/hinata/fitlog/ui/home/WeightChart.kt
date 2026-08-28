@@ -1,16 +1,19 @@
 package com.hinata.fitlog.ui.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -212,62 +215,90 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
     val range = max - min
 
     Column {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp),
-        ) {
-            val h = size.height
-            // 折れ線が枠線と重ならないよう上下に、端の点が切れないよう左右に余白を取る
-            val padY = h * 0.1f
-            val padX = 6f
-            val usableH = h - padY * 2
-            val usableW = size.width - padX * 2
+        // 点数が多い期間（3ヶ月/1年/全期間）でも点同士が潰れて読めなくならないよう、
+        // 1点あたりの最低幅を確保する。収まる場合（点数が少ない期間）は今まで通り
+        // カード幅いっぱいに描き、収まらない分だけ横スクロールで見せる
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val minPointSpacing = 20.dp
+            val chartWidth = maxOf(minPointSpacing * (points.size - 1), maxWidth)
 
-            fun yOf(weight: Double): Float {
-                val ratio = if (flat) 0.5f else ((weight - min) / range).toFloat()
-                // Canvas は上が y=0 なので、値が大きいほど上に来るよう反転する
-                return padY + usableH * (1f - ratio)
-            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+            ) {
+                Canvas(
+                    modifier = Modifier
+                        .width(chartWidth)
+                        .height(120.dp),
+                ) {
+                    val h = size.height
+                    // 折れ線が枠線と重ならないよう上下に、端の点が切れないよう左右に余白を取る
+                    val padY = h * 0.1f
+                    val padX = 6f
+                    val usableH = h - padY * 2
+                    val usableW = size.width - padX * 2
 
-            // ここに来るのは2件以上のときだけなので、点の間隔は必ず求められる
-            fun offsetAt(index: Int): Offset =
-                Offset(padX + usableW * index / (points.size - 1), yOf(points[index].weight))
+                    fun yOf(weight: Double): Float {
+                        val ratio = if (flat) 0.5f else ((weight - min) / range).toFloat()
+                        // Canvas は上が y=0 なので、値が大きいほど上に来るよう反転する
+                        return padY + usableH * (1f - ratio)
+                    }
 
-            // 上下の基準線
-            drawLine(gridColor, Offset(0f, padY), Offset(size.width, padY), strokeWidth = 1f)
-            drawLine(
-                gridColor,
-                Offset(0f, padY + usableH),
-                Offset(size.width, padY + usableH),
-                strokeWidth = 1f,
-            )
+                    // ここに来るのは2件以上のときだけなので、点の間隔は必ず求められる
+                    fun offsetAt(index: Int): Offset =
+                        Offset(padX + usableW * index / (points.size - 1), yOf(points[index].weight))
 
-            goal?.let {
-                drawLine(
-                    goalColor,
-                    Offset(0f, yOf(it)),
-                    Offset(size.width, yOf(it)),
-                    strokeWidth = 2f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)),
-                )
-            }
+                    // 上下の基準線
+                    drawLine(gridColor, Offset(0f, padY), Offset(size.width, padY), strokeWidth = 1f)
+                    drawLine(
+                        gridColor,
+                        Offset(0f, padY + usableH),
+                        Offset(size.width, padY + usableH),
+                        strokeWidth = 1f,
+                    )
 
-            val path = Path().apply {
-                val start = offsetAt(0)
-                moveTo(start.x, start.y)
-                for (i in 1 until points.size) {
-                    val o = offsetAt(i)
-                    lineTo(o.x, o.y)
+                    goal?.let {
+                        drawLine(
+                            goalColor,
+                            Offset(0f, yOf(it)),
+                            Offset(size.width, yOf(it)),
+                            strokeWidth = 2f,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)),
+                        )
+                    }
+
+                    val path = Path().apply {
+                        val start = offsetAt(0)
+                        moveTo(start.x, start.y)
+                        for (i in 1 until points.size) {
+                            val o = offsetAt(i)
+                            lineTo(o.x, o.y)
+                        }
+                    }
+                    drawPath(path, color = lineColor, style = Stroke(width = 3f))
+
+                    // 各記録の位置に点を打つ。幅が狭いので件数が多いと潰れる。小さめにする
+                    val dotRadius = if (points.size > 10) 2f else 4f
+                    for (i in points.indices) {
+                        drawCircle(lineColor, radius = dotRadius, center = offsetAt(i))
+                    }
                 }
             }
-            drawPath(path, color = lineColor, style = Stroke(width = 3f))
 
-            // 各記録の位置に点を打つ。幅が狭いので件数が多いと潰れる。小さめにする
-            val dotRadius = if (points.size > 10) 2f else 4f
-            for (i in points.indices) {
-                drawCircle(lineColor, radius = dotRadius, center = offsetAt(i))
-            }
+            // 上下の基準線が指す数値。横スクロールしても常に見えるよう線に重ねて固定表示する
+            ChartValueLabel(
+                text = "${formatAmount(max)} kg",
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 8.dp, start = 2.dp),
+            )
+            ChartValueLabel(
+                text = "${formatAmount(min)} kg",
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = 8.dp, start = 2.dp),
+            )
         }
 
         Row(
@@ -277,10 +308,22 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             ChartAxisLabel(formatShortDate(points.first().date))
-            ChartAxisLabel("${formatAmount(min)}〜${formatAmount(max)} kg")
             ChartAxisLabel(formatShortDate(points.last().date))
         }
     }
+}
+
+/** 基準線の脇に数値(kg)を出すための小さいラベル。線と重なっても読めるよう背景を敷く */
+@Composable
+private fun ChartValueLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
