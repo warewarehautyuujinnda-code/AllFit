@@ -8,12 +8,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.hinata.fitlog.data.dao.MealDao
 import com.hinata.fitlog.data.dao.RunningDao
+import com.hinata.fitlog.data.dao.RunningPointDao
 import com.hinata.fitlog.data.dao.RunningSplitDao
 import com.hinata.fitlog.data.dao.StrengthDao
 import com.hinata.fitlog.data.dao.StrengthSetDao
 import com.hinata.fitlog.data.dao.WeightDao
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.RunningEntity
+import com.hinata.fitlog.data.entity.RunningPointEntity
 import com.hinata.fitlog.data.entity.RunningSplitEntity
 import com.hinata.fitlog.data.entity.StrengthEntity
 import com.hinata.fitlog.data.entity.StrengthSetEntity
@@ -31,8 +33,9 @@ import java.util.UUID
         MealEntity::class,
         RunningSplitEntity::class,
         StrengthSetEntity::class,
+        RunningPointEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mealDao(): MealDao
     abstract fun runningSplitDao(): RunningSplitDao
     abstract fun strengthSetDao(): StrengthSetDao
+    abstract fun runningPointDao(): RunningPointDao
 
     companion object {
         /**
@@ -155,6 +159,31 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * GPS計測したランの経路（緯度経度の並び）を持つテーブルを追加した。
+         * 既存のテーブルには変更がないため、それまでの記録はそのまま残る
+         * （手入力の記録、およびこの変更より前に計測した記録には経路データがない）。
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `running_point` (
+                        `id` TEXT NOT NULL,
+                        `runId` TEXT NOT NULL,
+                        `sequence` INTEGER NOT NULL,
+                        `latitude` REAL NOT NULL,
+                        `longitude` REAL NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_running_point_runId` ON `running_point` (`runId`)"
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -164,7 +193,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "fitlog.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+                ).addMigrations(
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                ).build()
                     .also { INSTANCE = it }
             }
         }

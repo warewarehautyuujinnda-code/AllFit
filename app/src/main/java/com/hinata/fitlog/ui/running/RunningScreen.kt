@@ -91,9 +91,12 @@ fun RunningScreen(viewModel: RunningViewModel = viewModel()) {
             val item = items.firstOrNull { it.id == current.item.id } ?: current.item
             val splits by remember(item.id) { viewModel.splitsFor(item.id) }
                 .collectAsState(initial = emptyList())
+            val points by remember(item.id) { viewModel.pointsFor(item.id) }
+                .collectAsState(initial = emptyList())
             RunningDetailScreen(
                 item = item,
                 splits = splits,
+                points = points,
                 onBack = { route = RunningRoute.List },
                 onDelete = {
                     viewModel.delete(item)
