@@ -7,6 +7,7 @@ import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.WeightEntity
 import com.hinata.fitlog.domain.TrendPeriod
 import com.hinata.fitlog.domain.WeightTrend
+import com.hinata.fitlog.domain.hasWeightBeforePeriod
 import com.hinata.fitlog.domain.parseRequiredDouble
 import com.hinata.fitlog.domain.weightTrendOf
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,11 @@ class WeightViewModel(app: Application) : AndroidViewModel(app) {
     val trend: StateFlow<WeightTrend> = combine(items, _period) { w, p ->
         weightTrendOf(w, p)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightTrend())
+
+    /** 選択中の期間より前にも記録があるか。あればグラフ側で「全期間で見る」の案内を出す */
+    val hasOlderRecords: StateFlow<Boolean> = combine(items, _period) { w, p ->
+        hasWeightBeforePeriod(w, p)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** 設定中の目標体重(kg)。未設定なら null */
     val goal: StateFlow<Double?> = goalStore.goal

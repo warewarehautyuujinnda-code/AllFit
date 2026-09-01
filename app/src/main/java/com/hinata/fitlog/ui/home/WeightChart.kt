@@ -53,6 +53,8 @@ import com.hinata.fitlog.domain.formatTrend
  * @param period 選択中の表示期間
  * @param onPeriodChange 期間チップが選ばれたときに呼ばれる
  * @param onGoalClick 目標体重の設定を開く。設定の入り口を持たない画面では null
+ * @param hasRecordsBeforePeriod 選択中の期間より前にも記録があるか。期間で絞り込んでいるだけで
+ *   データが消えたわけではないことが伝わるよう、trueなら「全期間で見る」の案内を出す
  */
 @Composable
 fun WeightChart(
@@ -62,6 +64,7 @@ fun WeightChart(
     onPeriodChange: (TrendPeriod) -> Unit,
     modifier: Modifier = Modifier,
     onGoalClick: (() -> Unit)? = null,
+    hasRecordsBeforePeriod: Boolean = false,
 ) {
     val points = trend.points
 
@@ -74,6 +77,19 @@ fun WeightChart(
                 onSelect = onPeriodChange,
                 modifier = Modifier.padding(top = 8.dp),
             )
+
+            // 選択中の期間で絞り込まれているだけで記録自体は残っていることを伝え、
+            // タップ1つで「全期間」に切り替えられるようにする
+            if (hasRecordsBeforePeriod) {
+                Text(
+                    "この期間より前にも記録があります。全期間で見る",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .clickable { onPeriodChange(TrendPeriod.ALL) },
+                )
+            }
 
             Row(
                 modifier = Modifier.padding(top = 8.dp),

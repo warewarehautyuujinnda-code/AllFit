@@ -7,6 +7,7 @@ import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.domain.HomeSummary
 import com.hinata.fitlog.domain.TrendPeriod
 import com.hinata.fitlog.domain.WeightTrend
+import com.hinata.fitlog.domain.hasWeightBeforePeriod
 import com.hinata.fitlog.domain.homeSummaryOf
 import com.hinata.fitlog.domain.weightTrendOf
 import com.hinata.fitlog.ui.common.DateUtil
@@ -43,6 +44,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val weightTrend: StateFlow<WeightTrend> = combine(weights, _weightTrendPeriod) { w, p ->
         weightTrendOf(w, p)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightTrend())
+
+    /** 選択中の期間より前にも記録があるか。あればグラフ側で「全期間で見る」の案内を出す */
+    val hasOlderWeightRecords: StateFlow<Boolean> = combine(weights, _weightTrendPeriod) { w, p ->
+        hasWeightBeforePeriod(w, p)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** 体重推移グラフの表示期間を切り替える */
     fun onWeightTrendPeriodChange(period: TrendPeriod) {

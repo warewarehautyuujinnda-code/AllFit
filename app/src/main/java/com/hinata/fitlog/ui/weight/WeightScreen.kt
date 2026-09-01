@@ -51,6 +51,7 @@ fun WeightScreen(viewModel: WeightViewModel = viewModel()) {
     val trend by viewModel.trend.collectAsState()
     val period by viewModel.period.collectAsState()
     val goal by viewModel.goal.collectAsState()
+    val hasOlderRecords by viewModel.hasOlderRecords.collectAsState()
 
     var date by remember { mutableStateOf(DateUtil.today()) }
     var weight by remember { mutableStateOf("") }
@@ -127,6 +128,7 @@ fun WeightScreen(viewModel: WeightViewModel = viewModel()) {
                     onPeriodChange = viewModel::onPeriodChange,
                     modifier = Modifier.padding(top = 16.dp),
                     onGoalClick = { showGoalDialog = true },
+                    hasRecordsBeforePeriod = hasOlderRecords,
                 )
             }
 

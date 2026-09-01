@@ -116,6 +116,40 @@ class StatsTest {
         assertEquals(WeightTrend.MAX_POINTS_FOR_PERIOD, trend.points.size)
     }
 
+    // ---- FR-07 選択中の期間より前の記録の有無 ----
+
+    @Test
+    fun `期間より古い記録があればtrue`() {
+        val spread = listOf(
+            WeightEntity(id = "d0", date = "2026-08-11", weight = 70.0), // 当日
+            WeightEntity(id = "d2", date = "2025-09-01", weight = 55.0), // 11ヶ月前
+        )
+        assertEquals(true, hasWeightBeforePeriod(spread, TrendPeriod.THREE_MONTHS, todayDate))
+    }
+
+    @Test
+    fun `記録がすべて期間内ならfalse`() {
+        val within = listOf(WeightEntity(id = "d0", date = "2026-08-11", weight = 70.0))
+        assertEquals(false, hasWeightBeforePeriod(within, TrendPeriod.THREE_MONTHS, todayDate))
+    }
+
+    @Test
+    fun `期間の下限日ちょうどは古い記録に数えない`() {
+        val boundary = listOf(WeightEntity(id = "b", date = "2026-07-11", weight = 65.0)) // 1ヶ月前
+        assertEquals(false, hasWeightBeforePeriod(boundary, TrendPeriod.ONE_MONTH, todayDate))
+    }
+
+    @Test
+    fun `全期間では常にfalse`() {
+        val old = listOf(WeightEntity(id = "old", date = "2000-01-01", weight = 55.0))
+        assertEquals(false, hasWeightBeforePeriod(old, TrendPeriod.ALL, todayDate))
+    }
+
+    @Test
+    fun `記録が0件ならfalse`() {
+        assertEquals(false, hasWeightBeforePeriod(emptyList(), TrendPeriod.THREE_MONTHS, todayDate))
+    }
+
     // ---- FR-10 食事の当日合計 ----
 
     @Test
