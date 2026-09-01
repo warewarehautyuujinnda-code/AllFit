@@ -5,6 +5,7 @@ import com.hinata.fitlog.data.AppDatabase
 import com.hinata.fitlog.data.FitLogRepository
 import com.hinata.fitlog.data.RunningRepository
 import com.hinata.fitlog.data.StrengthRepository
+import com.hinata.fitlog.data.TabVisibilityStore
 import com.hinata.fitlog.data.WeightGoalStore
 
 /**
@@ -24,4 +25,7 @@ class FitLogApp : Application() {
 
     /** 目標体重の保存先。体重タブとホームの両方から同じ値を読む */
     val weightGoalStore: WeightGoalStore by lazy { WeightGoalStore(this) }
+
+    /** 表示するタブの保存先。設定タブと下部ナビゲーションの両方から同じ値を読む */
+    val tabVisibilityStore: TabVisibilityStore by lazy { TabVisibilityStore(this) }
 }

@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.ui.data.DataScreen
 import com.hinata.fitlog.ui.feedback.FeedbackAnnotateScreen
 import com.hinata.fitlog.ui.feedback.FeedbackButton
@@ -46,6 +48,7 @@ import com.hinata.fitlog.ui.home.HomeScreen
 import com.hinata.fitlog.ui.meal.MealScreen
 import com.hinata.fitlog.ui.navigation.Destination
 import com.hinata.fitlog.ui.running.RunningScreen
+import com.hinata.fitlog.ui.settings.SettingsScreen
 import com.hinata.fitlog.ui.strength.StrengthScreen
 import com.hinata.fitlog.ui.weight.WeightScreen
 import kotlinx.coroutines.launch
@@ -66,15 +69,17 @@ private fun Context.findActivity(): Activity {
 }
 
 /**
- * アプリのルート。下部ナビゲーションで6画面を切り替える。
- * 全画面共通のフィードバックボタンもここでオーバーレイ表示する。
+ * アプリのルート。下部ナビゲーションで画面を切り替える。設定で非表示にしたタブは除外される
+ * （ホームと設定は常に表示）。全画面共通のフィードバックボタンもここでオーバーレイ表示する。
  */
 @Composable
 fun FitLogAppRoot() {
     val navController = rememberNavController()
     val activity = LocalContext.current.findActivity()
+    val app = LocalContext.current.applicationContext as FitLogApp
     val scope = rememberCoroutineScope()
     var captured by remember { mutableStateOf<ImageBitmap?>(null) }
+    val visibleTabs by app.tabVisibilityStore.visibleTabs.collectAsState()
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -83,7 +88,11 @@ fun FitLogAppRoot() {
                 val currentDestination = navBackStackEntry?.destination
 
                 NavigationBar {
-                    Destination.entries.forEach { dest ->
+                    // 非表示に設定されたタブは下部ナビゲーションから外す。ホーム・設定は常に残す
+                    val shownDestinations = Destination.entries.filter {
+                        !it.toggleable || it in visibleTabs
+                    }
+                    shownDestinations.forEach { dest ->
                         val selected = currentDestination?.hierarchy?.any {
                             it.route == dest.route
                         } == true
@@ -117,6 +126,7 @@ fun FitLogAppRoot() {
                 composable(Destination.RUNNING.route) { RunningScreen() }
                 composable(Destination.MEAL.route) { MealScreen() }
                 composable(Destination.DATA.route) { DataScreen() }
+                composable(Destination.SETTINGS.route) { SettingsScreen() }
             }
         }
 
