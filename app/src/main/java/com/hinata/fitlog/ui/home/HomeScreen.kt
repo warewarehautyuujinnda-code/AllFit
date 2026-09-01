@@ -30,6 +30,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val trend by viewModel.weightTrend.collectAsState()
     val period by viewModel.weightTrendPeriod.collectAsState()
     val goal by viewModel.weightGoal.collectAsState()
+    val hasOlderRecords by viewModel.hasOlderWeightRecords.collectAsState()
 
     LazyColumn(
         modifier = Modifier
@@ -60,6 +61,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 goal = goal,
                 period = period,
                 onPeriodChange = viewModel::onWeightTrendPeriodChange,
+                hasRecordsBeforePeriod = hasOlderRecords,
             )
         }
     }
