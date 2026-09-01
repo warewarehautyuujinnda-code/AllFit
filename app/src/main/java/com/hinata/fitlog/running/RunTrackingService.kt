@@ -16,6 +16,7 @@ import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.MainActivity
 import com.hinata.fitlog.R
 import com.hinata.fitlog.data.entity.RunningEntity
+import com.hinata.fitlog.data.entity.RunningPointEntity
 import com.hinata.fitlog.data.entity.RunningSplitEntity
 import com.hinata.fitlog.domain.formatAmount
 import com.hinata.fitlog.domain.formatElapsed
@@ -55,6 +56,7 @@ class RunTrackingService : Service() {
     private var distanceMeters = 0.0
     private var lastRecordedMinute = 0
     private val splits = mutableListOf<RunningSplitEntity>()
+    private val points = mutableListOf<RunningPointEntity>()
 
     private val locationListener = LocationListener { location ->
         if (location.accuracy <= MAX_ACCURACY_METERS) {
@@ -64,6 +66,14 @@ class RunTrackingService : Service() {
                 )
             }
             lastLocation = location
+            points.add(
+                RunningPointEntity(
+                    runId = runId,
+                    sequence = points.size,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                )
+            )
         }
     }
 
@@ -97,6 +107,7 @@ class RunTrackingService : Service() {
         lastRecordedMinute = 0
         lastLocation = null
         splits.clear()
+        points.clear()
 
         ensureChannel()
         startForeground(NOTIFICATION_ID, buildNotification(elapsedSec = 0, distanceKm = 0.0))
@@ -171,8 +182,9 @@ class RunTrackingService : Service() {
                 kcal = null,
             )
             val savedSplits = splits.toList()
+            val savedPoints = points.toList()
             scope.launch {
-                (application as FitLogApp).runningRepository.saveTracked(run, savedSplits)
+                (application as FitLogApp).runningRepository.saveTracked(run, savedSplits, savedPoints)
                 RunTracker.reset()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()

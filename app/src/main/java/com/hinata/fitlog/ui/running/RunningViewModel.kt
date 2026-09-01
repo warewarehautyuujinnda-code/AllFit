@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.RunningEntity
+import com.hinata.fitlog.data.entity.RunningPointEntity
 import com.hinata.fitlog.data.entity.RunningSplitEntity
 import com.hinata.fitlog.domain.RunningMetric
 import com.hinata.fitlog.domain.RunningTrend
@@ -66,6 +67,9 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 記録の1分ごとの内訳。GPS計測でない記録は空になる */
     fun splitsFor(runId: String): Flow<List<RunningSplitEntity>> = repository.observeSplits(runId)
+
+    /** 記録が通った経路（緯度経度の並び）。GPS計測でない記録は空になる */
+    fun pointsFor(runId: String): Flow<List<RunningPointEntity>> = repository.observePoints(runId)
 
     /**
      * 手入力で保存する。距離は必須、時間は任意。

@@ -29,19 +29,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.hinata.fitlog.data.entity.RunningEntity
+import com.hinata.fitlog.data.entity.RunningPointEntity
 import com.hinata.fitlog.data.entity.RunningSplitEntity
 import com.hinata.fitlog.domain.formatAmount
 import com.hinata.fitlog.domain.formatPace
 
 /**
- * 記録の詳細。GPS計測した記録には1分ごとの内訳（何分時点で何km、その時点のペース）を出す。
- * 手入力の記録、またはGPS計測に失敗した記録では内訳がない旨を表示する。
+ * 記録の詳細。GPS計測した記録には走った経路と、1分ごとの内訳（何分時点で何km、その時点のペース）
+ * を出す。手入力の記録、またはGPS計測に失敗した記録ではどちらもない旨を表示する。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RunningDetailScreen(
     item: RunningEntity,
     splits: List<RunningSplitEntity>,
+    points: List<RunningPointEntity>,
     onBack: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -99,6 +101,11 @@ fun RunningDetailScreen(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            Text("経路", style = MaterialTheme.typography.titleMedium)
+            RunningRouteMap(points = points, modifier = Modifier.padding(top = 8.dp))
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
