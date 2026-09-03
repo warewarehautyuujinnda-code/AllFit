@@ -3,15 +3,22 @@ package com.hinata.fitlog
 import android.app.Application
 import com.hinata.fitlog.data.AppDatabase
 import com.hinata.fitlog.data.FitLogRepository
+import com.hinata.fitlog.data.PlanRepository
 import com.hinata.fitlog.data.RunningRepository
 import com.hinata.fitlog.data.StrengthRepository
 import com.hinata.fitlog.data.TabVisibilityStore
 import com.hinata.fitlog.data.WeightGoalStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * アプリ全体で共有する DB インスタンスを保持する Application クラス。
  */
 class FitLogApp : Application() {
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     val database: AppDatabase by lazy { AppDatabase.getInstance(this) }
 
     /** 4種別をまたぐ操作（書き出し・読み込み・全削除・件数）の入り口 */
@@ -28,4 +35,11 @@ class FitLogApp : Application() {
 
     /** 表示するタブの保存先。設定タブと下部ナビゲーションの両方から同じ値を読む */
     val tabVisibilityStore: TabVisibilityStore by lazy { TabVisibilityStore(this) }
+
+    val planRepository: PlanRepository by lazy { PlanRepository(database) }
+
+    override fun onCreate() {
+        super.onCreate()
+        applicationScope.launch { planRepository.syncSeeds() }
+    }
 }
