@@ -7,12 +7,16 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.hinata.fitlog.data.dao.MealDao
+import com.hinata.fitlog.data.dao.GoalDao
 import com.hinata.fitlog.data.dao.RunningDao
 import com.hinata.fitlog.data.dao.RunningPointDao
 import com.hinata.fitlog.data.dao.RunningSplitDao
 import com.hinata.fitlog.data.dao.StrengthDao
 import com.hinata.fitlog.data.dao.StrengthSetDao
 import com.hinata.fitlog.data.dao.WeightDao
+import com.hinata.fitlog.data.dao.WeeklyPlanDao
+import com.hinata.fitlog.data.dao.WeeklyStrengthTargetDao
+import com.hinata.fitlog.data.entity.GoalEntity
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.RunningPointEntity
@@ -20,6 +24,8 @@ import com.hinata.fitlog.data.entity.RunningSplitEntity
 import com.hinata.fitlog.data.entity.StrengthEntity
 import com.hinata.fitlog.data.entity.StrengthSetEntity
 import com.hinata.fitlog.data.entity.WeightEntity
+import com.hinata.fitlog.data.entity.WeeklyPlanEntity
+import com.hinata.fitlog.data.entity.WeeklyStrengthTargetEntity
 import java.util.UUID
 
 /**
@@ -34,8 +40,11 @@ import java.util.UUID
         RunningSplitEntity::class,
         StrengthSetEntity::class,
         RunningPointEntity::class,
+        GoalEntity::class,
+        WeeklyPlanEntity::class,
+        WeeklyStrengthTargetEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -46,6 +55,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun runningSplitDao(): RunningSplitDao
     abstract fun strengthSetDao(): StrengthSetDao
     abstract fun runningPointDao(): RunningPointDao
+    abstract fun goalDao(): GoalDao
+    abstract fun weeklyPlanDao(): WeeklyPlanDao
+    abstract fun weeklyStrengthTargetDao(): WeeklyStrengthTargetDao
 
     companion object {
         /**
@@ -184,6 +196,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS goal (createdAt TEXT NOT NULL, title TEXT NOT NULL, targetDate TEXT, PRIMARY KEY(createdAt))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS weekly_plan (weekStart TEXT NOT NULL, goalId TEXT, targetRunningKm REAL, memo TEXT, PRIMARY KEY(weekStart))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS weekly_strength_target (weekPlanId TEXT NOT NULL, exerciseName TEXT NOT NULL, targetReps INTEGER, targetSets INTEGER, PRIMARY KEY(weekPlanId, exerciseName))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_weekly_strength_target_weekPlanId ON weekly_strength_target (weekPlanId)")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -195,6 +216,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "fitlog.db",
                 ).addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                    MIGRATION_6_7,
                 ).build()
                     .also { INSTANCE = it }
             }
