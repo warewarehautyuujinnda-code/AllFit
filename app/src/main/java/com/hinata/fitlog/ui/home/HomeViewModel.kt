@@ -7,10 +7,16 @@ import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.domain.HomeSummary
 import com.hinata.fitlog.domain.TrendPeriod
 import com.hinata.fitlog.domain.WeightTrend
+import com.hinata.fitlog.domain.WeeklyGoalSummary
 import com.hinata.fitlog.domain.hasWeightBeforePeriod
 import com.hinata.fitlog.domain.homeSummaryOf
 import com.hinata.fitlog.domain.weightTrendOf
+import com.hinata.fitlog.domain.runningDistanceOf
+import com.hinata.fitlog.domain.strengthProgressOf
+import com.hinata.fitlog.domain.weekStartOf
+import com.hinata.fitlog.domain.weeklyPlanFor
 import com.hinata.fitlog.ui.common.DateUtil
+import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -57,4 +63,31 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 目標体重(kg)。設定の入り口は体重タブにあり、ここでは表示にだけ使う */
     val weightGoal: StateFlow<Double?> = (app as FitLogApp).weightGoalStore.goal
+
+    private val planRepository = (app as FitLogApp).planRepository
+    private val strengthRecords = db.strengthDao().observeAll()
+    private val runningRecords = db.runningDao().observeAll()
+
+    private val planContext = combine(
+        planRepository.observeGoals(),
+        planRepository.observeWeeklyPlans(),
+        planRepository.observeStrengthTargets(),
+    ) { goals, plans, targets -> Triple(goals, plans, targets) }
+
+    val weeklyGoalSummary: StateFlow<WeeklyGoalSummary> = combine(
+        planContext, strengthRecords, runningRecords, weights, weightGoal,
+    ) { (goals, plans, targets), strengthRecs, runningRecs, weightRecs, wGoal ->
+        val weekStart = weekStartOf(LocalDate.now())
+        val plan = weeklyPlanFor(plans, weekStart)
+        val latestGoal = goals.maxByOrNull { it.createdAt }
+        WeeklyGoalSummary(
+            goalTitle = latestGoal?.title,
+            goalTargetDate = latestGoal?.targetDate,
+            strength = plan?.let { strengthProgressOf(targets, strengthRecs, weekStart) },
+            runningActualKm = plan?.targetRunningKm?.let { runningDistanceOf(runningRecs, weekStart) },
+            runningTargetKm = plan?.targetRunningKm,
+            weightCurrent = weightRecs.firstOrNull()?.weight,
+            weightGoal = wGoal,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeeklyGoalSummary())
 }

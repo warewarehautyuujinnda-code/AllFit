@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hinata.fitlog.domain.HomeSummary
+import com.hinata.fitlog.domain.WeeklyGoalSummary
 import com.hinata.fitlog.domain.formatAmount
 import com.hinata.fitlog.ui.common.DateUtil
 
@@ -31,6 +32,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val period by viewModel.weightTrendPeriod.collectAsState()
     val goal by viewModel.weightGoal.collectAsState()
     val hasOlderRecords by viewModel.hasOlderWeightRecords.collectAsState()
+    val weeklyGoal by viewModel.weeklyGoalSummary.collectAsState()
 
     LazyColumn(
         modifier = Modifier
@@ -52,6 +54,10 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         }
 
         item {
+            WeeklyGoalSection(weeklyGoal)
+        }
+
+        item {
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         }
 
@@ -63,6 +69,37 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 onPeriodChange = viewModel::onWeightTrendPeriodChange,
                 hasRecordsBeforePeriod = hasOlderRecords,
             )
+        }
+    }
+}
+
+@Composable
+private fun WeeklyGoalSection(summary: WeeklyGoalSummary) {
+    val hasStrength = summary.strength != null && summary.strength.plannedCount > 0
+    val hasRunning = summary.runningTargetKm != null
+    val hasWeight = summary.weightGoal != null
+    if (summary.goalTitle == null && !hasStrength && !hasRunning && !hasWeight) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("今週の目標", style = MaterialTheme.typography.titleLarge)
+        summary.goalTitle?.let { title ->
+            Text(
+                summary.goalTargetDate?.let { "$title（${it}まで）" } ?: title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (hasStrength) {
+                val progress = summary.strength!!
+                SummaryCard("筋トレ", "${progress.doneCount}/${progress.plannedCount} 種目", "今週実施", Modifier.weight(1f))
+            }
+            if (hasRunning) {
+                SummaryCard("ラン", "${formatAmount(summary.runningActualKm ?: 0.0)} km", "目標 ${formatAmount(summary.runningTargetKm!!)} km", Modifier.weight(1f))
+            }
+            if (hasWeight) {
+                SummaryCard("体重", summary.weightCurrent?.let { "${formatAmount(it)} kg" } ?: "未記録", "目標 ${formatAmount(summary.weightGoal!!)} kg", Modifier.weight(1f))
+            }
         }
     }
 }
