@@ -7,16 +7,22 @@ import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.RunningPointEntity
 import com.hinata.fitlog.data.entity.RunningSplitEntity
+import com.hinata.fitlog.data.entity.WeeklyPlanEntity
 import com.hinata.fitlog.domain.RunningMetric
 import com.hinata.fitlog.domain.RunningTrend
 import com.hinata.fitlog.domain.RunningTrendPeriod
+import com.hinata.fitlog.domain.WeeklyRunningProgress
 import com.hinata.fitlog.domain.monthlyTotalDistance
 import com.hinata.fitlog.domain.parseOptionalDouble
 import com.hinata.fitlog.domain.parseRequiredDouble
+import com.hinata.fitlog.domain.runningDistanceOf
 import com.hinata.fitlog.domain.runningTrendOf
+import com.hinata.fitlog.domain.weekStartOf
+import com.hinata.fitlog.domain.weeklyPlanFor
 import com.hinata.fitlog.running.RunTrackState
 import com.hinata.fitlog.running.RunTracker
 import com.hinata.fitlog.ui.common.DateUtil
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,10 +37,24 @@ import kotlinx.coroutines.launch
  */
 class RunningViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = (app as FitLogApp).runningRepository
+    private val planRepository = (app as FitLogApp).planRepository
 
     /** 保存済みの記録（日付降順）。DBの変更に追従する */
     val items: StateFlow<List<RunningEntity>> = repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val currentWeeklyPlan: StateFlow<WeeklyPlanEntity?> = planRepository.observeWeeklyPlans()
+        .map { plans -> weeklyPlanFor(plans, weekStartOf(LocalDate.now())) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** 今週のラン距離目標に対する実績。目標が無い週は null */
+    val weeklyRunningProgress: StateFlow<WeeklyRunningProgress?> = combine(
+        currentWeeklyPlan, items,
+    ) { plan, records ->
+        plan?.targetRunningKm?.let { target ->
+            WeeklyRunningProgress(actualKm = runningDistanceOf(records, plan.weekStart), targetKm = target)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** グラフの表示期間。デフォルトは直近3ヶ月 */
     private val _trendPeriod = MutableStateFlow(RunningTrendPeriod.THREE_MONTHS)

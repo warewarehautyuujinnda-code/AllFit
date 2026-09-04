@@ -121,6 +121,7 @@ private fun RunningMainScreen(
     val trendMetric by viewModel.trendMetric.collectAsState()
     val monthlyTotalKm by viewModel.monthlyTotalKm.collectAsState()
     val trackState by viewModel.trackState.collectAsState()
+    val weeklyProgress by viewModel.weeklyRunningProgress.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -162,6 +163,16 @@ private fun RunningMainScreen(
                 onMetricChange = viewModel::selectTrendMetric,
                 modifier = Modifier.padding(top = 12.dp),
             )
+
+            if (weeklyProgress != null) {
+                Text(
+                    "残り目標: ${formatAmount(weeklyProgress!!.remainingKm)} km" +
+                        "（目標 ${formatAmount(weeklyProgress!!.targetKm)} km）",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
 
             TimerCard(
                 state = trackState,
