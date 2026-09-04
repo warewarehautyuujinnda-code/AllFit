@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +60,7 @@ import java.time.LocalDate
 fun ExercisePickerScreen(
     records: List<StrengthRecordWithSets>,
     today: LocalDate,
+    plannedExercises: Set<String>,
     onBack: () -> Unit,
     onPick: (ExerciseRef) -> Unit,
 ) {
@@ -135,6 +137,7 @@ fun ExercisePickerScreen(
                         ExerciseRow(
                             ref = ref,
                             elapsed = elapsedLabelOf(lastPerformed[ref.ex], today),
+                            planned = ref.ex in plannedExercises,
                             onClick = { onPick(ref) },
                         )
                         HorizontalDivider()
@@ -187,6 +190,7 @@ private fun PartTab(
 private fun ExerciseRow(
     ref: ExerciseRef,
     elapsed: String?,
+    planned: Boolean,
     onClick: () -> Unit,
 ) {
     Row(
@@ -210,6 +214,16 @@ private fun ExerciseRow(
                 .weight(1f)
                 .padding(start = 12.dp),
         )
+        if (planned) {
+            Icon(
+                Icons.Filled.Flag,
+                contentDescription = "今週の計画に含まれる種目",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .size(16.dp)
+                    .padding(end = 8.dp),
+            )
+        }
         if (elapsed != null) {
             Text(
                 elapsed,

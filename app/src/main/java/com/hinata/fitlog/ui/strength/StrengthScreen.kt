@@ -30,6 +30,8 @@ private sealed interface StrengthRoute {
 @Composable
 fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
     val items by viewModel.items.collectAsState()
+    val pendingExercises by viewModel.pendingExercises.collectAsState()
+    val weekTargets by viewModel.weekTargets.collectAsState()
 
     var route by remember { mutableStateOf<StrengthRoute>(StrengthRoute.Calendar) }
     var selectedDate by rememberSaveable { mutableStateOf(DateUtil.today()) }
@@ -61,6 +63,7 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
         StrengthRoute.Picker -> ExercisePickerScreen(
             records = items,
             today = today,
+            plannedExercises = pendingExercises,
             onBack = { route = StrengthRoute.Calendar },
             onPick = { ref -> route = StrengthRoute.Input(ref) },
         )
@@ -69,6 +72,7 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
             ref = current.ref,
             date = selectedDate,
             lastRecord = items.firstOrNull { it.record.ex == current.ref.ex },
+            weekTarget = weekTargets.firstOrNull { it.exerciseName.trim() == current.ref.ex.trim() },
             snackbarHostState = snackbarHostState,
             onDateChange = { selectedDate = it },
             onBack = { route = StrengthRoute.Picker },

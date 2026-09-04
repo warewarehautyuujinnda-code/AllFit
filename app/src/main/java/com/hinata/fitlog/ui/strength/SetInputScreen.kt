@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.hinata.fitlog.data.entity.StrengthRecordWithSets
+import com.hinata.fitlog.data.entity.WeeklyStrengthTargetEntity
 import com.hinata.fitlog.domain.ExerciseRef
 import com.hinata.fitlog.domain.bodyPartLabel
 import com.hinata.fitlog.domain.formatAmount
@@ -65,6 +66,7 @@ fun SetInputScreen(
     ref: ExerciseRef,
     date: String,
     lastRecord: StrengthRecordWithSets?,
+    weekTarget: WeeklyStrengthTargetEntity?,
     snackbarHostState: SnackbarHostState,
     onDateChange: (String) -> Unit,
     onBack: () -> Unit,
@@ -118,6 +120,15 @@ fun SetInputScreen(
                 )
             }
 
+            if (weekTarget != null) {
+                Text(
+                    "今週の目標: ${describeTarget(weekTarget)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+
             Text(
                 "重量・回数は空欄のままでも記録できます（自重トレなど）",
                 style = MaterialTheme.typography.bodySmall,
@@ -156,6 +167,12 @@ fun SetInputScreen(
                         value = set.reps,
                         onValueChange = { set.reps = it },
                         label = { Text("回数") },
+                        placeholder = {
+                            val targetReps = weekTarget?.targetReps
+                            if (index == 0 && targetReps != null) {
+                                Text(targetReps.toString())
+                            }
+                        },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier
@@ -208,4 +225,11 @@ private fun describeRecord(record: StrengthRecordWithSets): String {
         ).joinToString("×").ifEmpty { "-" }
     }
     return detail.ifEmpty { "記録あり" }
+}
+
+/** 目標の「回数×セット数」を表示用に整形する */
+private fun describeTarget(target: WeeklyStrengthTargetEntity): String {
+    val reps = target.targetReps?.let { "${it}回" }
+    val sets = target.targetSets?.let { "${it}セット" }
+    return listOfNotNull(reps, sets).joinToString("×").ifEmpty { "設定あり" }
 }
