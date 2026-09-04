@@ -16,6 +16,7 @@ import com.hinata.fitlog.domain.parseOptionalInt
 import com.hinata.fitlog.domain.strengthProgressOf
 import com.hinata.fitlog.domain.weekStartOf
 import com.hinata.fitlog.domain.weeklyPlanFor
+import com.hinata.fitlog.ui.common.currentDateFlow
 import java.time.LocalDate
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,9 +36,13 @@ class StrengthViewModel(app: Application) : AndroidViewModel(app) {
     val items: StateFlow<List<StrengthRecordWithSets>> = repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private val currentDate = currentDateFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalDate.now())
+
     /** 今週の計画。無い週は null */
-    private val currentPlan: StateFlow<WeeklyPlanEntity?> = planRepository.observeWeeklyPlans()
-        .map { plans -> weeklyPlanFor(plans, weekStartOf(LocalDate.now())) }
+    private val currentPlan: StateFlow<WeeklyPlanEntity?> = combine(
+        planRepository.observeWeeklyPlans(), currentDate,
+    ) { plans, date -> weeklyPlanFor(plans, weekStartOf(date)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val strengthProgress: StateFlow<StrengthPlanProgress?> = combine(

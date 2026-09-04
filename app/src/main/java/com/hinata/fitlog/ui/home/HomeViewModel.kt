@@ -16,6 +16,7 @@ import com.hinata.fitlog.domain.strengthProgressOf
 import com.hinata.fitlog.domain.weekStartOf
 import com.hinata.fitlog.domain.weeklyPlanFor
 import com.hinata.fitlog.ui.common.DateUtil
+import com.hinata.fitlog.ui.common.currentDateFlow
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -67,17 +68,22 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val planRepository = (app as FitLogApp).planRepository
     private val strengthRecords = db.strengthDao().observeAll()
     private val runningRecords = db.runningDao().observeAll()
+    private val currentDate = currentDateFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalDate.now())
 
-    private val planContext = combine(
+    private val planContextWithoutDate = combine(
         planRepository.observeGoals(),
         planRepository.observeWeeklyPlans(),
         planRepository.observeStrengthTargets(),
     ) { goals, plans, targets -> Triple(goals, plans, targets) }
 
+    private val planContext = combine(planContextWithoutDate, currentDate) { context, date -> context to date }
+
     val weeklyGoalSummary: StateFlow<WeeklyGoalSummary> = combine(
         planContext, strengthRecords, runningRecords, weights, weightGoal,
-    ) { (goals, plans, targets), strengthRecs, runningRecs, weightRecs, wGoal ->
-        val weekStart = weekStartOf(LocalDate.now())
+    ) { (context, date), strengthRecs, runningRecs, weightRecs, wGoal ->
+        val (goals, plans, targets) = context
+        val weekStart = weekStartOf(date)
         val plan = weeklyPlanFor(plans, weekStart)
         val latestGoal = goals.maxByOrNull { it.createdAt }
         WeeklyGoalSummary(

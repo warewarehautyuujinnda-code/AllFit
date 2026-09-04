@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hinata.fitlog.domain.HomeSummary
 import com.hinata.fitlog.domain.WeeklyGoalSummary
 import com.hinata.fitlog.domain.formatAmount
+import com.hinata.fitlog.domain.weightGoalDifferenceLabel
 import com.hinata.fitlog.ui.common.DateUtil
 
 /**
@@ -73,6 +74,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     }
 }
 
+/** 長期目標と今週の筋トレ・ラン・体重目標を、当日サマリーの直後にまとめて表示する。 */
 @Composable
 private fun WeeklyGoalSection(summary: WeeklyGoalSummary) {
     val hasStrength = summary.strength != null && summary.strength.plannedCount > 0
@@ -98,7 +100,14 @@ private fun WeeklyGoalSection(summary: WeeklyGoalSummary) {
                 SummaryCard("ラン", "${formatAmount(summary.runningActualKm ?: 0.0)} km", "目標 ${formatAmount(summary.runningTargetKm!!)} km", Modifier.weight(1f))
             }
             if (hasWeight) {
-                SummaryCard("体重", summary.weightCurrent?.let { "${formatAmount(it)} kg" } ?: "未記録", "目標 ${formatAmount(summary.weightGoal!!)} kg", Modifier.weight(1f))
+                val goal = summary.weightGoal!!
+                SummaryCard(
+                    "体重",
+                    summary.weightCurrent?.let { "${formatAmount(it)} kg" } ?: "未記録",
+                    weightGoalDifferenceLabel(summary.weightCurrent, goal)
+                        ?: "目標 ${formatAmount(goal)} kg",
+                    Modifier.weight(1f),
+                )
             }
         }
     }

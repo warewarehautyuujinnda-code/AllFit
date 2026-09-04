@@ -22,6 +22,7 @@ import com.hinata.fitlog.domain.weeklyPlanFor
 import com.hinata.fitlog.running.RunTrackState
 import com.hinata.fitlog.running.RunTracker
 import com.hinata.fitlog.ui.common.DateUtil
+import com.hinata.fitlog.ui.common.currentDateFlow
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,8 +44,12 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
     val items: StateFlow<List<RunningEntity>> = repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val currentWeeklyPlan: StateFlow<WeeklyPlanEntity?> = planRepository.observeWeeklyPlans()
-        .map { plans -> weeklyPlanFor(plans, weekStartOf(LocalDate.now())) }
+    private val currentDate = currentDateFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalDate.now())
+
+    private val currentWeeklyPlan: StateFlow<WeeklyPlanEntity?> = combine(
+        planRepository.observeWeeklyPlans(), currentDate,
+    ) { plans, date -> weeklyPlanFor(plans, weekStartOf(date)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** 今週のラン距離目標に対する実績。目標が無い週は null */

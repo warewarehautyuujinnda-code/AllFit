@@ -8,6 +8,7 @@ import com.hinata.fitlog.data.entity.WeeklyStrengthTargetEntity
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlanProgressTest {
@@ -63,5 +64,22 @@ class PlanProgressTest {
     @Test fun `週外のラン記録は合計しない`() {
         val records = listOf(RunningEntity(date = "2026-08-30", dist = 5.0), RunningEntity(date = "2026-09-07", dist = 5.0))
         assertEquals(0.0, runningDistanceOf(records, "2026-08-31"), 0.001)
+    }
+
+    @Test fun `ラン実績が目標を超えても残り距離は0になる`() {
+        assertEquals(0.0, WeeklyRunningProgress(actualKm = 12.5, targetKm = 10.0).remainingKm, 0.001)
+    }
+
+    @Test fun `記録側の種目名の前後空白を無視して実施済みにする`() {
+        val targets = listOf(WeeklyStrengthTargetEntity("2026-08-31", "ベンチプレス"))
+        val result = strengthProgressOf(targets, listOf(record("2026-09-01", "  ベンチプレス  ")), "2026-08-31")
+        assertEquals(1, result.doneCount)
+    }
+
+    @Test fun `別種目の記録では計画種目は未実施のまま`() {
+        val targets = listOf(WeeklyStrengthTargetEntity("2026-08-31", "ベンチプレス"))
+        val result = strengthProgressOf(targets, listOf(record("2026-09-01", "スクワット")), "2026-08-31")
+        assertEquals(listOf("ベンチプレス"), result.pendingExercises)
+        assertTrue(result.doneExercises.contains("スクワット"))
     }
 }

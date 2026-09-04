@@ -46,8 +46,7 @@ import com.hinata.fitlog.domain.BodyPart
 import com.hinata.fitlog.domain.ExerciseRef
 import com.hinata.fitlog.domain.bodyPartLabel
 import com.hinata.fitlog.domain.elapsedLabelOf
-import com.hinata.fitlog.domain.exercisesOf
-import com.hinata.fitlog.domain.frequentExercises
+import com.hinata.fitlog.domain.exercisePickerRows
 import com.hinata.fitlog.domain.lastPerformedByExercise
 import java.time.LocalDate
 
@@ -70,12 +69,8 @@ fun ExercisePickerScreen(
 
     val selectedPart = BodyPart.entries.getOrNull(tabIndex - 1)
     val lastPerformed = remember(records) { lastPerformedByExercise(records) }
-    val rows = remember(records, selectedPart) {
-        if (selectedPart == null) {
-            frequentExercises(records)
-        } else {
-            exercisesOf(selectedPart, records).map { ExerciseRef(it, selectedPart) }
-        }
+    val rows = remember(records, selectedPart, plannedExercises) {
+        exercisePickerRows(records, selectedPart, plannedExercises)
     }
 
     Scaffold(
