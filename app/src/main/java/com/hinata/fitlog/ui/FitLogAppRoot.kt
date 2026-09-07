@@ -57,7 +57,7 @@ import kotlin.math.roundToInt
 private val FeedbackButtonMargin = 16.dp
 
 // 初期位置（右上）をホーム画面ヘッダーの高さに合わせるための、ステータスバーからの追加余白
-private val FeedbackButtonInitialTopMargin = 16.dp
+private val FeedbackButtonInitialTopMargin = 40.dp
 
 private fun Context.findActivity(): Activity {
     var context = this
