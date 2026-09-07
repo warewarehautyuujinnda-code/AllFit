@@ -5,6 +5,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hinata.fitlog.data.entity.WeightEntity
 import com.hinata.fitlog.domain.TrendPeriod
@@ -46,6 +48,8 @@ import com.hinata.fitlog.domain.formatShortDate
 import com.hinata.fitlog.domain.formatTrend
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 /**
@@ -256,12 +260,35 @@ private fun SummaryBlock(
     }
 }
 
+/**
+ * グラフの系列色（折れ線・点・目標線・グリッド）。
+ *
+ * この画面は端末の壁紙連動カラー（Material You / `ui.theme.FitLogTheme` の dynamicColor）を
+ * 使っているため、[MaterialTheme.colorScheme] をそのまま使うと壁紙によっては彩度の低い
+ * グレーに近い色になり、折れ線やグリッドがほとんど見えなくなってしまう。データを運ぶ色は
+ * 壁紙に関係なく読み取れる必要があるため、ここだけはテーマ本来のブランドカラー
+ * （`ui.theme.LightColors`/`DarkColors` と同じ色相）を固定で使い、ライト/ダークの
+ * 切り替えにだけ追従する。
+ */
+private val ChartLineColorLight = Color(0xFF2E7D32)
+private val ChartLineColorDark = Color(0xFF81C784)
+private val ChartGoalColorLight = Color(0xFFF9A825)
+private val ChartGoalColorDark = Color(0xFFFFD54F)
+private val ChartGridColorLight = Color(0xFFDDDDDD)
+private val ChartGridColorDark = Color(0xFF3A3A3A)
+private val ChartAxisTextColorLight = Color(0xFF6B6B6B)
+private val ChartAxisTextColorDark = Color(0xFFB0B0B0)
+
 /** 2件以上のときだけ呼ばれる折れ線グラフ本体 */
 @Composable
 private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
-    val lineColor = MaterialTheme.colorScheme.primary
-    val gridColor = MaterialTheme.colorScheme.outlineVariant
-    val goalColor = MaterialTheme.colorScheme.tertiary
+    val dark = isSystemInDarkTheme()
+    val lineColor = if (dark) ChartLineColorDark else ChartLineColorLight
+    val goalColor = if (dark) ChartGoalColorDark else ChartGoalColorLight
+    val gridColor = if (dark) ChartGridColorDark else ChartGridColorLight
+    val axisTextColor = if (dark) ChartAxisTextColorDark else ChartAxisTextColorLight
+    // 点は線と重なっても分かるよう、カード背景色の縁取りをしてから塗る
+    val ringColor = MaterialTheme.colorScheme.surface
 
     // 目標線が枠の外に出ると見えないので、目盛りの範囲に目標体重も含める
     val values = points.map { it.weight } + listOfNotNull(goal)
@@ -272,6 +299,17 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
     val flat = max - min < 0.1
     val range = max - min
 
+    val chartHeight = 140.dp
+    val verticalPadFraction = 0.12f
+    val padYDp = chartHeight * verticalPadFraction
+    val usableHDp = chartHeight - padYDp * 2
+    // Canvas 内の yOf() と同じ比率計算を Dp 側でも行い、横罫線の数値ラベルを
+    // 線・グリッドと同じ高さに重ねて固定表示できるようにする
+    fun yDpOf(weight: Double): Dp {
+        val ratio = if (flat) 0.5f else ((weight - min) / range).toFloat()
+        return padYDp + usableHDp * (1f - ratio)
+    }
+
     Column {
         // 点数が多い期間（3ヶ月/半年/1年/全期間）でも点同士が潰れて読めなくならないよう、
         // 1点あたりの最低幅を確保する。収まる場合（点数が少ない期間）は今まで通り
@@ -281,6 +319,8 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
             val chartWidth = maxOf(minPointSpacing * (points.size - 1), maxWidth)
             // 横軸に出す日付は、期間が長いほど間引き・粒度を粗くして詰まらないようにする
             val axisTicks = axisTickIndices(points.size)
+            // 横罫線＋左側の数値目盛り。記録の値幅に応じてキリのいい間隔にする
+            val gridValues = gridTicks(min, max, goal)
 
             Box(
                 modifier = Modifier
@@ -291,11 +331,11 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
                     Canvas(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp),
+                            .height(chartHeight),
                     ) {
                         val h = size.height
                         // 折れ線が枠線と重ならないよう上下に、端の点が切れないよう左右に余白を取る
-                        val padY = h * 0.1f
+                        val padY = h * verticalPadFraction
                         val padX = 6f
                         val usableH = h - padY * 2
                         val usableW = size.width - padX * 2
@@ -310,14 +350,11 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
                         fun offsetAt(index: Int): Offset =
                             Offset(padX + usableW * index / (points.size - 1), yOf(points[index].weight))
 
-                        // 上下の基準線
-                        drawLine(gridColor, Offset(0f, padY), Offset(size.width, padY), strokeWidth = 1f)
-                        drawLine(
-                            gridColor,
-                            Offset(0f, padY + usableH),
-                            Offset(size.width, padY + usableH),
-                            strokeWidth = 1f,
-                        )
+                        // 横罫線（候補Bと同じく、上下2本だけでなく値ごとに複数本引く）
+                        gridValues.forEach { v ->
+                            val y = yOf(v)
+                            drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
+                        }
 
                         goal?.let {
                             drawLine(
@@ -340,9 +377,11 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
                         drawPath(path, color = lineColor, style = Stroke(width = 3f))
 
                         // 各記録の位置に点を打つ。幅が狭いので件数が多いと潰れる。小さめにする
-                        val dotRadius = if (points.size > 10) 2f else 4f
+                        val dotRadius = if (points.size > 10) 2.5f else 4.5f
                         for (i in points.indices) {
-                            drawCircle(lineColor, radius = dotRadius, center = offsetAt(i))
+                            val center = offsetAt(i)
+                            drawCircle(ringColor, radius = dotRadius + 2f, center = center)
+                            drawCircle(lineColor, radius = dotRadius, center = center)
                         }
                     }
 
@@ -354,26 +393,55 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
                             .padding(top = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        axisTicks.forEach { i -> ChartAxisLabel(axisDateLabel(points, i)) }
+                        axisTicks.forEach { i -> ChartAxisLabel(axisDateLabel(points, i), color = axisTextColor) }
                     }
                 }
             }
 
-            // 上下の基準線が指す数値。横スクロールしても常に見えるよう線に重ねて固定表示する
-            ChartValueLabel(
-                text = "${formatAmount(max)} kg",
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 8.dp, start = 2.dp),
-            )
-            ChartValueLabel(
-                text = "${formatAmount(min)} kg",
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(bottom = 8.dp, start = 2.dp),
-            )
+            // 横罫線の数値。横スクロールしても常に見えるよう線に重ねて固定表示する
+            gridValues.forEach { v ->
+                ChartValueLabel(
+                    text = formatAmount(v),
+                    color = axisTextColor,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = 2.dp, y = yDpOf(v) - 8.dp),
+                )
+            }
         }
     }
+}
+
+/**
+ * 横罫線を引く値の一覧。記録・目標の値幅に応じてキリのいい間隔（0.5/1/2/5kg）を選び、
+ * 目標線とほぼ重なる目盛りは間引いて、同じ高さに2本線が並んで見えるのを防ぐ。
+ *
+ * - 生成する目盛りの数は [MAX_GRID_TICKS] で必ず打ち切る。体重・目標体重は
+ *   上限を検証していない（[com.hinata.fitlog.domain.parseRequiredDouble] は
+ *   正の有限数なら何でも通す）ため、誤って極端な値が入ると際限なく目盛りを
+ *   作ろうとしてしまう安全弁。
+ * - キリのいい値が範囲内に1つも収まらない（70.1〜70.4kgのような小さな増減など）
+ *   場合は目盛りが空になり数値の手がかりが消えてしまうため、最小・最大の実測値に
+ *   フォールバックする。
+ */
+private const val MAX_GRID_TICKS = 8
+
+private fun gridTicks(min: Double, max: Double, goal: Double?): List<Double> {
+    val range = max - min
+    if (range <= 0.0) return listOf(min)
+    val step = when {
+        range > 14 -> 5.0
+        range > 7 -> 2.0
+        range > 3 -> 1.0
+        else -> 0.5
+    }
+    val start = ceil(min / step) * step
+    val roundedTicks = generateSequence(start) { it + step }
+        .takeWhile { it <= max + 1e-6 }
+        .take(MAX_GRID_TICKS)
+        .toList()
+    val filtered = if (goal == null) roundedTicks else roundedTicks.filter { abs(it - goal) > step * 0.25 }
+    return filtered.ifEmpty { listOf(min, max) }
 }
 
 /**
@@ -407,25 +475,25 @@ private fun axisDateLabel(points: List<WeightEntity>, index: Int): String {
     }
 }
 
-/** 基準線の脇に数値(kg)を出すための小さいラベル。線と重なっても読めるよう背景を敷く */
+/** 横罫線の脇に数値(kg)を出すための小さいラベル。線と重なっても読めるよう背景を敷く */
 @Composable
-private fun ChartValueLabel(text: String, modifier: Modifier = Modifier) {
+private fun ChartValueLabel(text: String, color: Color, modifier: Modifier = Modifier) {
     Text(
         text,
         modifier = modifier
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
             .padding(horizontal = 4.dp, vertical = 1.dp),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = color,
     )
 }
 
 @Composable
-private fun ChartAxisLabel(text: String) {
+private fun ChartAxisLabel(text: String, color: Color) {
     Text(
         text,
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = color,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )
@@ -436,7 +504,7 @@ private fun ChartMessage(message: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp),
+            .height(140.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
