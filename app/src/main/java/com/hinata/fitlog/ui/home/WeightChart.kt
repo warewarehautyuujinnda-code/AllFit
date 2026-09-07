@@ -415,10 +415,20 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
 /**
  * 横罫線を引く値の一覧。記録・目標の値幅に応じてキリのいい間隔（0.5/1/2/5kg）を選び、
  * 目標線とほぼ重なる目盛りは間引いて、同じ高さに2本線が並んで見えるのを防ぐ。
+ *
+ * - 生成する目盛りの数は [MAX_GRID_TICKS] で必ず打ち切る。体重・目標体重は
+ *   上限を検証していない（[com.hinata.fitlog.domain.parseRequiredDouble] は
+ *   正の有限数なら何でも通す）ため、誤って極端な値が入ると際限なく目盛りを
+ *   作ろうとしてしまう安全弁。
+ * - キリのいい値が範囲内に1つも収まらない（70.1〜70.4kgのような小さな増減など）
+ *   場合は目盛りが空になり数値の手がかりが消えてしまうため、最小・最大の実測値に
+ *   フォールバックする。
  */
+private const val MAX_GRID_TICKS = 8
+
 private fun gridTicks(min: Double, max: Double, goal: Double?): List<Double> {
     val range = max - min
-    if (range <= 0.0) return emptyList()
+    if (range <= 0.0) return listOf(min)
     val step = when {
         range > 14 -> 5.0
         range > 7 -> 2.0
@@ -426,8 +436,12 @@ private fun gridTicks(min: Double, max: Double, goal: Double?): List<Double> {
         else -> 0.5
     }
     val start = ceil(min / step) * step
-    val ticks = generateSequence(start) { it + step }.takeWhile { it <= max + 1e-6 }.toList()
-    return if (goal == null) ticks else ticks.filter { abs(it - goal) > step * 0.25 }
+    val roundedTicks = generateSequence(start) { it + step }
+        .takeWhile { it <= max + 1e-6 }
+        .take(MAX_GRID_TICKS)
+        .toList()
+    val filtered = if (goal == null) roundedTicks else roundedTicks.filter { abs(it - goal) > step * 0.25 }
+    return filtered.ifEmpty { listOf(min, max) }
 }
 
 /**
