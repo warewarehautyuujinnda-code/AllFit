@@ -3,6 +3,7 @@ package com.hinata.fitlog.domain
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.WeightEntity
 import java.time.LocalDate
+import kotlin.math.roundToInt
 
 /**
  * 記録から表示用の集計を作る処理。Android に依存しない素の Kotlin で書いてあるので、
@@ -75,7 +76,7 @@ fun weightTrendOf(weights: List<WeightEntity>): WeightTrend =
 /**
  * 体重推移（FR-07）を表示期間で絞って組み立てる。
  * @param weights 日付降順の体重記録
- * @param period 表示期間。ALL は絞り込みなし
+ * @param period 表示期間。ALL は絞り込みなし（記録がある一番古い日から最新の日まで）
  * @param today 期間の下限日を決める基準日。呼び出し側は通常省略し、テストでのみ固定する
  */
 fun weightTrendOf(
@@ -85,13 +86,32 @@ fun weightTrendOf(
 ): WeightTrend {
     val cutoff = period.cutoffDate(today)?.toString()
     val inPeriod = if (cutoff == null) weights else weights.filter { it.date >= cutoff }
-    return WeightTrend(inPeriod.take(WeightTrend.MAX_POINTS_FOR_PERIOD).reversed())
+    // weights は新しい順なので、ここで古い→新しい順に直してから間引く
+    val chronological = inPeriod.reversed()
+    return WeightTrend(downsampleEvenly(chronological, WeightTrend.MAX_POINTS_FOR_PERIOD))
+}
+
+/**
+ * 件数が上限を超えるとき、両端（一番古い記録・最新の記録）を必ず残したまま
+ * 全体からほぼ均等な間隔で間引く。
+ *
+ * 単純に先頭 N 件で切り詰めると「全期間」を選んだときに一番古い記録が
+ * 表示されなくなってしまう（新しい順の先頭 N 件＝直近 N 件のため）。
+ * グラフは常に選んだ期間の始まりから終わりまでの形が見えるべきなので、
+ * 間引く場合も端は落とさずインデックスを均等割りする。
+ */
+private fun <T> downsampleEvenly(items: List<T>, max: Int): List<T> {
+    if (items.size <= max || max <= 1) return items
+    val lastIndex = items.size - 1
+    return (0 until max)
+        .map { step -> items[(step * lastIndex.toDouble() / (max - 1)).roundToInt()] }
+        .distinct()
 }
 
 /**
  * 選択中の期間より前にも体重の記録があるか。
  *
- * 期間チップで絞り込んだ結果グラフに出ていないだけなのに、記録自体が無い・消えたと
+ * 期間セレクターで絞り込んだ結果グラフに出ていないだけなのに、記録自体が無い・消えたと
  * 誤解されないよう、画面側で「もっと前にも記録がある」旨を伝えるために使う。
  * @param weights 体重記録（順不同で可）
  */

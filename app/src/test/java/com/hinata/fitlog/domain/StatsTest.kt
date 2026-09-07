@@ -87,13 +87,15 @@ class StatsTest {
         val spread = listOf(
             WeightEntity(id = "d0", date = "2026-08-11", weight = 70.0), // 当日
             WeightEntity(id = "d1", date = "2026-06-01", weight = 70.5), // 2ヶ月前
+            WeightEntity(id = "d1b", date = "2026-03-11", weight = 70.8), // 5ヶ月前
             WeightEntity(id = "d2", date = "2025-09-01", weight = 71.0), // 11ヶ月前
             WeightEntity(id = "d3", date = "2020-01-01", weight = 75.0), // 6年前
         )
         assertEquals(1, weightTrendOf(spread, TrendPeriod.ONE_MONTH, todayDate).points.size)
         assertEquals(2, weightTrendOf(spread, TrendPeriod.THREE_MONTHS, todayDate).points.size)
-        assertEquals(3, weightTrendOf(spread, TrendPeriod.ONE_YEAR, todayDate).points.size)
-        assertEquals(4, weightTrendOf(spread, TrendPeriod.ALL, todayDate).points.size)
+        assertEquals(3, weightTrendOf(spread, TrendPeriod.SIX_MONTHS, todayDate).points.size)
+        assertEquals(4, weightTrendOf(spread, TrendPeriod.ONE_YEAR, todayDate).points.size)
+        assertEquals(5, weightTrendOf(spread, TrendPeriod.ALL, todayDate).points.size)
     }
 
     @Test
@@ -114,6 +116,20 @@ class StatsTest {
         val many = (1..250).map { WeightEntity(id = "x$it", date = "2026-08-11", weight = 70.0 + it) }
         val trend = weightTrendOf(many, TrendPeriod.ALL, todayDate)
         assertEquals(WeightTrend.MAX_POINTS_FOR_PERIOD, trend.points.size)
+    }
+
+    @Test
+    fun `全期間で件数が上限を超えても一番古い記録と最新の記録は必ず含める`() {
+        // weights は日付降順で渡す前提。x1が最新(今日)、x250が一番古い記録
+        val many = (1..250).map { i ->
+            WeightEntity(id = "x$i", date = todayDate.minusDays((i - 1).toLong()).toString(), weight = 70.0)
+        }
+        val trend = weightTrendOf(many, TrendPeriod.ALL, todayDate)
+        assertEquals(WeightTrend.MAX_POINTS_FOR_PERIOD, trend.points.size)
+        // 単純に直近200件で切り詰めると一番古い記録(x250)が消えてしまうため、
+        // 均等間引きで両端を残せているかを確認する
+        assertEquals("x250", trend.points.first().id)
+        assertEquals("x1", trend.points.last().id)
     }
 
     // ---- FR-07 選択中の期間より前の記録の有無 ----
