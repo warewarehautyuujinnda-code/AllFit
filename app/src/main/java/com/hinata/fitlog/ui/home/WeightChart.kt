@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -50,6 +48,9 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log10
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
@@ -311,72 +312,67 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
     }
 
     Column {
-        // 点数が多い期間（3ヶ月/半年/1年/全期間）でも点同士が潰れて読めなくならないよう、
-        // 1点あたりの最低幅を確保する。収まる場合（点数が少ない期間）は今まで通り
-        // カード幅いっぱいに描き、収まらない分だけ横スクロールで見せる
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val minPointSpacing = 20.dp
-            val chartWidth = maxOf(minPointSpacing * (points.size - 1), maxWidth)
+        // 期間全体を一目で見比べられることを優先し、点数が多くても横スクロールはしない。
+        // カード幅にそのまま収め、点同士の間隔は件数に応じて詰まる（点マーカーは
+        // points.size > 20 で非表示にして潰れを防ぐ。下の dotRadius 分岐を参照）
+        Box(modifier = Modifier.fillMaxWidth()) {
             // 横軸に出す日付は、期間が長いほど間引き・粒度を粗くして詰まらないようにする
             val axisTicks = axisTickIndices(points.size)
             // 横罫線＋左側の数値目盛り。記録の値幅に応じてキリのいい間隔にする
             val gridValues = gridTicks(min, max, goal)
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-            ) {
-                Column(modifier = Modifier.width(chartWidth)) {
-                    Canvas(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(chartHeight),
-                    ) {
-                        val h = size.height
-                        // 折れ線が枠線と重ならないよう上下に、端の点が切れないよう左右に余白を取る
-                        val padY = h * verticalPadFraction
-                        val padX = 6f
-                        val usableH = h - padY * 2
-                        val usableW = size.width - padX * 2
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(chartHeight),
+                ) {
+                    val h = size.height
+                    // 折れ線が枠線と重ならないよう上下に、端の点が切れないよう左右に余白を取る
+                    val padY = h * verticalPadFraction
+                    val padX = 6f
+                    val usableH = h - padY * 2
+                    val usableW = size.width - padX * 2
 
-                        fun yOf(weight: Double): Float {
-                            val ratio = if (flat) 0.5f else ((weight - min) / range).toFloat()
-                            // Canvas は上が y=0 なので、値が大きいほど上に来るよう反転する
-                            return padY + usableH * (1f - ratio)
+                    fun yOf(weight: Double): Float {
+                        val ratio = if (flat) 0.5f else ((weight - min) / range).toFloat()
+                        // Canvas は上が y=0 なので、値が大きいほど上に来るよう反転する
+                        return padY + usableH * (1f - ratio)
+                    }
+
+                    // ここに来るのは2件以上のときだけなので、点の間隔は必ず求められる
+                    fun offsetAt(index: Int): Offset =
+                        Offset(padX + usableW * index / (points.size - 1), yOf(points[index].weight))
+
+                    // 横罫線（候補Bと同じく、上下2本だけでなく値ごとに複数本引く）
+                    gridValues.forEach { v ->
+                        val y = yOf(v)
+                        drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
+                    }
+
+                    goal?.let {
+                        drawLine(
+                            goalColor,
+                            Offset(0f, yOf(it)),
+                            Offset(size.width, yOf(it)),
+                            strokeWidth = 2f,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)),
+                        )
+                    }
+
+                    val path = Path().apply {
+                        val start = offsetAt(0)
+                        moveTo(start.x, start.y)
+                        for (i in 1 until points.size) {
+                            val o = offsetAt(i)
+                            lineTo(o.x, o.y)
                         }
+                    }
+                    drawPath(path, color = lineColor, style = Stroke(width = 3f))
 
-                        // ここに来るのは2件以上のときだけなので、点の間隔は必ず求められる
-                        fun offsetAt(index: Int): Offset =
-                            Offset(padX + usableW * index / (points.size - 1), yOf(points[index].weight))
-
-                        // 横罫線（候補Bと同じく、上下2本だけでなく値ごとに複数本引く）
-                        gridValues.forEach { v ->
-                            val y = yOf(v)
-                            drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
-                        }
-
-                        goal?.let {
-                            drawLine(
-                                goalColor,
-                                Offset(0f, yOf(it)),
-                                Offset(size.width, yOf(it)),
-                                strokeWidth = 2f,
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)),
-                            )
-                        }
-
-                        val path = Path().apply {
-                            val start = offsetAt(0)
-                            moveTo(start.x, start.y)
-                            for (i in 1 until points.size) {
-                                val o = offsetAt(i)
-                                lineTo(o.x, o.y)
-                            }
-                        }
-                        drawPath(path, color = lineColor, style = Stroke(width = 3f))
-
-                        // 各記録の位置に点を打つ。幅が狭いので件数が多いと潰れる。小さめにする
+                    // 各記録の位置に点を打つ。件数が多いと潰れて見づらいので、
+                    // ある程度を超えたら線だけにする
+                    if (points.size <= 20) {
                         val dotRadius = if (points.size > 10) 2.5f else 4.5f
                         for (i in points.indices) {
                             val center = offsetAt(i)
@@ -384,21 +380,20 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
                             drawCircle(lineColor, radius = dotRadius, center = center)
                         }
                     }
+                }
 
-                    // 横軸の日付。Canvas と同じ幅の中で均等割りにすることで、
-                    // 横スクロールしても点の位置とほぼ揃って見える
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        axisTicks.forEach { i -> ChartAxisLabel(axisDateLabel(points, i), color = axisTextColor) }
-                    }
+                // 横軸の日付。Canvas と同じ幅の中で均等割りにする
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    axisTicks.forEach { i -> ChartAxisLabel(axisDateLabel(points, i), color = axisTextColor) }
                 }
             }
 
-            // 横罫線の数値。横スクロールしても常に見えるよう線に重ねて固定表示する
+            // 横罫線の数値。線に重ねて固定表示する
             gridValues.forEach { v ->
                 ChartValueLabel(
                     text = formatAmount(v),
@@ -413,7 +408,9 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
 }
 
 /**
- * 横罫線を引く値の一覧。記録・目標の値幅に応じてキリのいい間隔（0.5/1/2/5kg）を選び、
+ * 横罫線を引く値の一覧。値幅がどれだけ広くても目盛りの本数がだいたい一定になるよう、
+ * 「1・2・5×10^n」のキリのいい間隔を選ぶ（全期間のように記録が数年分にわたって
+ * 値幅が大きいときに、目盛りが2本しか出ず読みづらくなるのを防ぐ）。
  * 目標線とほぼ重なる目盛りは間引いて、同じ高さに2本線が並んで見えるのを防ぐ。
  *
  * - 生成する目盛りの数は [MAX_GRID_TICKS] で必ず打ち切る。体重・目標体重は
@@ -425,16 +422,12 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
  *   フォールバックする。
  */
 private const val MAX_GRID_TICKS = 8
+private const val TARGET_GRID_TICKS = 5
 
 private fun gridTicks(min: Double, max: Double, goal: Double?): List<Double> {
     val range = max - min
     if (range <= 0.0) return listOf(min)
-    val step = when {
-        range > 14 -> 5.0
-        range > 7 -> 2.0
-        range > 3 -> 1.0
-        else -> 0.5
-    }
+    val step = niceStep(range / TARGET_GRID_TICKS)
     val start = ceil(min / step) * step
     val roundedTicks = generateSequence(start) { it + step }
         .takeWhile { it <= max + 1e-6 }
@@ -442,6 +435,20 @@ private fun gridTicks(min: Double, max: Double, goal: Double?): List<Double> {
         .toList()
     val filtered = if (goal == null) roundedTicks else roundedTicks.filter { abs(it - goal) > step * 0.25 }
     return filtered.ifEmpty { listOf(min, max) }
+}
+
+/** [rawStep] 以上でいちばん近い「1・2・5×10^n」の値に丸める（0.5kg未満にはしない）。 */
+private fun niceStep(rawStep: Double): Double {
+    val safe = rawStep.coerceAtLeast(0.05)
+    val magnitude = 10.0.pow(floor(log10(safe)))
+    val normalized = safe / magnitude
+    val niceNormalized = when {
+        normalized <= 1.0 -> 1.0
+        normalized <= 2.0 -> 2.0
+        normalized <= 5.0 -> 5.0
+        else -> 10.0
+    }
+    return (niceNormalized * magnitude).coerceAtLeast(0.5)
 }
 
 /**
