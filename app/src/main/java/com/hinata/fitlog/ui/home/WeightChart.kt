@@ -437,15 +437,22 @@ private fun gridTicks(min: Double, max: Double, goal: Double?): List<Double> {
     return filtered.ifEmpty { listOf(min, max) }
 }
 
-/** [rawStep] 以上でいちばん近い「1・2・5×10^n」の値に丸める（0.5kg未満にはしない）。 */
+/**
+ * [rawStep] にいちばん近い「1・2・5×10^n」の値に丸める（0.5kg未満にはしない）。
+ *
+ * しきい値は 1/2/5 それぞれの中間（1.5, 3.5, 7.5）にする。単純に
+ * 「normalized <= 2.0 なら2、それ以外は5」のような切り上げ式にすると、
+ * しきい値のすぐ上（例: normalized=2.02）で本来2を選びたいのに5まで
+ * 一気に飛んでしまい、目盛りの本数が想定より大きく減ってしまう。
+ */
 private fun niceStep(rawStep: Double): Double {
     val safe = rawStep.coerceAtLeast(0.05)
     val magnitude = 10.0.pow(floor(log10(safe)))
     val normalized = safe / magnitude
     val niceNormalized = when {
-        normalized <= 1.0 -> 1.0
-        normalized <= 2.0 -> 2.0
-        normalized <= 5.0 -> 5.0
+        normalized <= 1.5 -> 1.0
+        normalized <= 3.5 -> 2.0
+        normalized <= 7.5 -> 5.0
         else -> 10.0
     }
     return (niceNormalized * magnitude).coerceAtLeast(0.5)
