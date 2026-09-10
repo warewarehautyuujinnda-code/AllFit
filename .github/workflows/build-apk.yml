@@ -83,3 +83,31 @@ jobs:
             詳しくは [docs/インストール手順.md](https://github.com/${{ github.repository }}/blob/main/docs/インストール手順.md)
           prerelease: true
           files: release-asset/fitlog.apk
+
+      # Actions の実行画面を開いた人が、下の Artifacts（要ログイン・ZIP解凍が要る）を
+      # 「ダウンロードできるものがない」と誤解しないよう、正しいリンクを画面の一番上
+      # （Summary）に出しておく。
+      - name: サマリーに配布リンクを表示(main)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          {
+            echo "## 最新版をスマホに入れる"
+            echo ""
+            echo "**[fitlog.apk をダウンロード](https://github.com/${{ github.repository }}/releases/download/latest/fitlog.apk)**"
+            echo ""
+            echo "下の Artifacts はマージ前のブランチを試すための ZIP です。普段の更新はここのリンクからどうぞ。"
+            echo "入れ方・詰まったときの対処は [docs/インストール手順.md](https://github.com/${{ github.repository }}/blob/main/docs/インストール手順.md)。"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: サマリーに配布リンクを表示(ブランチ)
+        if: github.ref != 'refs/heads/main'
+        run: |
+          {
+            echo "## このブランチのビルドを試す"
+            echo ""
+            echo "下の **Artifacts** から \`fitlog-${{ steps.safe_name.outputs.name }}\` をダウンロードする。"
+            echo "ZIPなので、解凍してから中のAPKを開く。"
+            echo ""
+            echo "普段使う最新版（mainの内容）は"
+            echo "[リリースの「最新ビルド」](https://github.com/${{ github.repository }}/releases/tag/latest) から。"
+          } >> "$GITHUB_STEP_SUMMARY"
