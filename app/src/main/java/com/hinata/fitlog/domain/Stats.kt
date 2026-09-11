@@ -109,22 +109,6 @@ private fun <T> downsampleEvenly(items: List<T>, max: Int): List<T> {
 }
 
 /**
- * 選択中の期間より前にも体重の記録があるか。
- *
- * 期間セレクターで絞り込んだ結果グラフに出ていないだけなのに、記録自体が無い・消えたと
- * 誤解されないよう、画面側で「もっと前にも記録がある」旨を伝えるために使う。
- * @param weights 体重記録（順不同で可）
- */
-fun hasWeightBeforePeriod(
-    weights: List<WeightEntity>,
-    period: TrendPeriod,
-    today: LocalDate = LocalDate.now(),
-): Boolean {
-    val cutoff = period.cutoffDate(today)?.toString() ?: return false
-    return weights.any { it.date < cutoff }
-}
-
-/**
  * 指定日の食事の合計（FR-10）を求める。
  * 未入力（null）の項目は合計に含めない。すべて未入力なら 0 になる。
  */
