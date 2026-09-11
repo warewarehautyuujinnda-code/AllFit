@@ -21,11 +21,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,9 +36,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hinata.fitlog.data.entity.WeightEntity
 import com.hinata.fitlog.domain.TrendPeriod
@@ -44,20 +48,16 @@ import com.hinata.fitlog.domain.WeightTrend
 import com.hinata.fitlog.domain.formatAmount
 import com.hinata.fitlog.domain.formatShortDate
 import com.hinata.fitlog.domain.formatTrend
+import com.hinata.fitlog.domain.weightAxisOf
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
-import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.floor
-import kotlin.math.log10
-import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
  * 体重推移（FR-07）。カード内の左に数値サマリー、右に折れ線グラフを並べる。
  *
  * ライブラリを足さず Canvas で描いている。表示するのは1系列の折れ線だけで、
- * 目盛りは上下の値をテキストで添えれば足りるため。
+ * 目盛りも整数kgの罫線とその数値を添えれば足りるため。
  *
  * 記録が0件・1件でも落ちないように、描画は2件以上のときだけ行う。
  *
@@ -65,8 +65,6 @@ import kotlin.math.roundToInt
  * @param period 選択中の表示期間
  * @param onPeriodChange 期間セグメントが選ばれたときに呼ばれる
  * @param onGoalClick 目標体重の設定を開く。設定の入り口を持たない画面では null
- * @param hasRecordsBeforePeriod 選択中の期間より前にも記録があるか。期間で絞り込んでいるだけで
- *   データが消えたわけではないことが伝わるよう、trueなら「全期間で見る」の案内を出す
  */
 @Composable
 fun WeightChart(
@@ -76,7 +74,6 @@ fun WeightChart(
     onPeriodChange: (TrendPeriod) -> Unit,
     modifier: Modifier = Modifier,
     onGoalClick: (() -> Unit)? = null,
-    hasRecordsBeforePeriod: Boolean = false,
 ) {
     val points = trend.points
 
@@ -89,19 +86,6 @@ fun WeightChart(
                 onSelect = onPeriodChange,
                 modifier = Modifier.padding(top = 8.dp),
             )
-
-            // 選択中の期間で絞り込まれているだけで記録自体は残っていることを伝え、
-            // タップ1つで「全期間」に切り替えられるようにする
-            if (hasRecordsBeforePeriod) {
-                Text(
-                    "この期間より前にも記録があります。全期間で見る",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                        .clickable { onPeriodChange(TrendPeriod.ALL) },
-                )
-            }
 
             Row(
                 modifier = Modifier.padding(top = 8.dp),
@@ -262,23 +246,33 @@ private fun SummaryBlock(
 }
 
 /**
- * グラフの系列色（折れ線・点・目標線・グリッド）。
+ * グラフの系列色（折れ線・点・目標線）と縦軸の数値の色。
  *
  * この画面は端末の壁紙連動カラー（Material You / `ui.theme.FitLogTheme` の dynamicColor）を
  * 使っているため、[MaterialTheme.colorScheme] をそのまま使うと壁紙によっては彩度の低い
- * グレーに近い色になり、折れ線やグリッドがほとんど見えなくなってしまう。データを運ぶ色は
+ * グレーに近い色になり、折れ線がほとんど見えなくなってしまう。データを運ぶ色は
  * 壁紙に関係なく読み取れる必要があるため、ここだけはテーマ本来のブランドカラー
  * （`ui.theme.LightColors`/`DarkColors` と同じ色相）を固定で使い、ライト/ダークの
  * 切り替えにだけ追従する。
+ *
+ * 横罫線だけは [WeightLineChart] でカードの文字色を薄く重ねて作る。固定のグレーだと
+ * カード背景（壁紙連動の `surfaceContainerHighest`）とほぼ同じ明るさになり、線が消えるため。
  */
 private val ChartLineColorLight = Color(0xFF2E7D32)
 private val ChartLineColorDark = Color(0xFF81C784)
 private val ChartGoalColorLight = Color(0xFFF9A825)
 private val ChartGoalColorDark = Color(0xFFFFD54F)
-private val ChartGridColorLight = Color(0xFFDDDDDD)
-private val ChartGridColorDark = Color(0xFF3A3A3A)
 private val ChartAxisTextColorLight = Color(0xFF6B6B6B)
 private val ChartAxisTextColorDark = Color(0xFFB0B0B0)
+
+/** 折れ線部分の高さ（横軸の日付は含まない） */
+private val ChartHeight = 140.dp
+
+/** 一番上・一番下の罫線と枠の間の余白。端の点と、罫線の高さに中心を合わせた数値が切れない幅 */
+private val ChartPadY = 10.dp
+
+/** 縦軸の数値と、罫線の左端との間隔 */
+private val AxisLabelGap = 6.dp
 
 /** 2件以上のときだけ呼ばれる折れ線グラフ本体 */
 @Composable
@@ -286,176 +280,124 @@ private fun WeightLineChart(points: List<WeightEntity>, goal: Double?) {
     val dark = isSystemInDarkTheme()
     val lineColor = if (dark) ChartLineColorDark else ChartLineColorLight
     val goalColor = if (dark) ChartGoalColorDark else ChartGoalColorLight
-    val gridColor = if (dark) ChartGridColorDark else ChartGridColorLight
     val axisTextColor = if (dark) ChartAxisTextColorDark else ChartAxisTextColorLight
-    // 点は線と重なっても分かるよう、カード背景色の縁取りをしてから塗る
-    val ringColor = MaterialTheme.colorScheme.surface
+    // 点の縁取りはカードの背景色そのものにする。以前は surface（ほぼ白）を使っていたため、
+    // カード背景（surfaceContainerHighest）の上で白い縁が浮いて見えていた
+    val cardColor = CardDefaults.cardColors().containerColor
+    // 罫線はカードの文字色を薄く重ねて作る。固定のグレーだと壁紙連動のカード背景と
+    // 明るさが近くなり、線が見えなくなることがある
+    val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f)
 
-    // 目標線が枠の外に出ると見えないので、目盛りの範囲に目標体重も含める
+    // 目標線が枠の外に出ると見えないので、縦軸の範囲に目標体重も含める
     val values = points.map { it.weight } + listOfNotNull(goal)
-    val min = values.min()
-    val max = values.max()
-    // すべて同じ体重（または差が表示に出ないほど小さい）だと max-min が 0 になり
-    // 0除算になる。その場合は高さの真ん中に横一直線として描く
-    val flat = max - min < 0.1
-    val range = max - min
+    val axis = weightAxisOf(values.min(), values.max())
+    // 通常は罫線が2本以上あり上下端は必ず異なるが、極端な値の安全弁で上下端が
+    // 一致したときだけ 0 除算にならないよう、高さの真ん中に描く
+    val axisRange = axis.max - axis.min
 
-    val chartHeight = 140.dp
-    val verticalPadFraction = 0.12f
-    val padYDp = chartHeight * verticalPadFraction
-    val usableHDp = chartHeight - padYDp * 2
-    // Canvas 内の yOf() と同じ比率計算を Dp 側でも行い、横罫線の数値ラベルを
-    // 線・グリッドと同じ高さに重ねて固定表示できるようにする
-    fun yDpOf(weight: Double): Dp {
-        val ratio = if (flat) 0.5f else ((weight - min) / range).toFloat()
-        return padYDp + usableHDp * (1f - ratio)
+    // 縦軸の数値は折れ線に重ねず、グラフの左に専用の列を取って罫線の高さに並べる。
+    // 背景を敷かなくても線と重ならないので、カードの背景にそのままなじむ。
+    // 列の幅はいちばん長い数値に合わせる
+    val textMeasurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = axisTextColor)
+    val labelLayouts = remember(axis, labelStyle) {
+        axis.labels.map { v -> v to textMeasurer.measure(formatAmount(v), labelStyle) }
     }
+    val gutterWidth = with(LocalDensity.current) {
+        (labelLayouts.maxOfOrNull { it.second.size.width } ?: 0).toDp()
+    } + AxisLabelGap
 
-    Column {
-        // 期間全体を一目で見比べられることを優先し、点数が多くても横スクロールはしない。
-        // カード幅にそのまま収め、点同士の間隔は件数に応じて詰まる（点マーカーは
-        // points.size > 20 で非表示にして潰れを防ぐ。下の dotRadius 分岐を参照）
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // 横軸に出す日付は、期間が長いほど間引き・粒度を粗くして詰まらないようにする
-            val axisTicks = axisTickIndices(points.size)
-            // 横罫線＋左側の数値目盛り。記録の値幅に応じてキリのいい間隔にする
-            val gridValues = gridTicks(min, max, goal)
+    // 横軸に出す日付は、期間が長いほど間引き・粒度を粗くして詰まらないようにする
+    val axisTicks = axisTickIndices(points.size)
 
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(chartHeight),
-                ) {
-                    val h = size.height
-                    // 折れ線が枠線と重ならないよう上下に、端の点が切れないよう左右に余白を取る
-                    val padY = h * verticalPadFraction
-                    val padX = 6f
-                    val usableH = h - padY * 2
-                    val usableW = size.width - padX * 2
+    // 期間全体を一目で見比べられることを優先し、点数が多くても横スクロールはしない。
+    // カード幅にそのまま収め、点同士の間隔は件数に応じて詰まる（点マーカーは
+    // points.size > 20 で非表示にして潰れを防ぐ。下の dotRadius 分岐を参照）
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(ChartHeight),
+        ) {
+            val plotLeft = gutterWidth.toPx()
+            val padY = ChartPadY.toPx()
+            // 端の点が数値の列や枠で切れないよう左右にも少し余白を取る
+            val padX = 6f
+            val usableH = size.height - padY * 2
+            val usableW = size.width - plotLeft - padX * 2
 
-                    fun yOf(weight: Double): Float {
-                        val ratio = if (flat) 0.5f else ((weight - min) / range).toFloat()
-                        // Canvas は上が y=0 なので、値が大きいほど上に来るよう反転する
-                        return padY + usableH * (1f - ratio)
-                    }
-
-                    // ここに来るのは2件以上のときだけなので、点の間隔は必ず求められる
-                    fun offsetAt(index: Int): Offset =
-                        Offset(padX + usableW * index / (points.size - 1), yOf(points[index].weight))
-
-                    // 横罫線（候補Bと同じく、上下2本だけでなく値ごとに複数本引く）
-                    gridValues.forEach { v ->
-                        val y = yOf(v)
-                        drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
-                    }
-
-                    goal?.let {
-                        drawLine(
-                            goalColor,
-                            Offset(0f, yOf(it)),
-                            Offset(size.width, yOf(it)),
-                            strokeWidth = 2f,
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)),
-                        )
-                    }
-
-                    val path = Path().apply {
-                        val start = offsetAt(0)
-                        moveTo(start.x, start.y)
-                        for (i in 1 until points.size) {
-                            val o = offsetAt(i)
-                            lineTo(o.x, o.y)
-                        }
-                    }
-                    drawPath(path, color = lineColor, style = Stroke(width = 3f))
-
-                    // 各記録の位置に点を打つ。件数が多いと潰れて見づらいので、
-                    // ある程度を超えたら線だけにする
-                    if (points.size <= 20) {
-                        val dotRadius = if (points.size > 10) 2.5f else 4.5f
-                        for (i in points.indices) {
-                            val center = offsetAt(i)
-                            drawCircle(ringColor, radius = dotRadius + 2f, center = center)
-                            drawCircle(lineColor, radius = dotRadius, center = center)
-                        }
-                    }
-                }
-
-                // 横軸の日付。Canvas と同じ幅の中で均等割りにする
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    axisTicks.forEach { i -> ChartAxisLabel(axisDateLabel(points, i), color = axisTextColor) }
-                }
+            fun yOf(weight: Double): Float {
+                val ratio = if (axisRange > 0) ((weight - axis.min) / axisRange).toFloat() else 0.5f
+                // Canvas は上が y=0 なので、値が大きいほど上に来るよう反転する
+                return padY + usableH * (1f - ratio)
             }
 
-            // 横罫線の数値。線に重ねて固定表示する
-            gridValues.forEach { v ->
-                ChartValueLabel(
-                    text = formatAmount(v),
-                    color = axisTextColor,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .offset(x = 2.dp, y = yDpOf(v) - 8.dp),
+            // ここに来るのは2件以上のときだけなので、点の間隔は必ず求められる
+            fun offsetAt(index: Int): Offset = Offset(
+                plotLeft + padX + usableW * index / (points.size - 1),
+                yOf(points[index].weight),
+            )
+
+            // 横罫線（整数kg）。数値の列には伸ばさない
+            axis.lines.forEach { v ->
+                val y = yOf(v)
+                drawLine(gridColor, Offset(plotLeft, y), Offset(size.width, y), strokeWidth = 1f)
+            }
+
+            // 縦軸の数値。罫線の高さに中心を合わせ、列の右端（罫線の左端側）にそろえる
+            labelLayouts.forEach { (v, layout) ->
+                drawText(
+                    layout,
+                    topLeft = Offset(
+                        plotLeft - AxisLabelGap.toPx() - layout.size.width,
+                        yOf(v) - layout.size.height / 2f,
+                    ),
                 )
             }
+
+            goal?.let {
+                drawLine(
+                    goalColor,
+                    Offset(plotLeft, yOf(it)),
+                    Offset(size.width, yOf(it)),
+                    strokeWidth = 2f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)),
+                )
+            }
+
+            val path = Path().apply {
+                val start = offsetAt(0)
+                moveTo(start.x, start.y)
+                for (i in 1 until points.size) {
+                    val o = offsetAt(i)
+                    lineTo(o.x, o.y)
+                }
+            }
+            drawPath(path, color = lineColor, style = Stroke(width = 3f))
+
+            // 各記録の位置に点を打つ。件数が多いと潰れて見づらいので、
+            // ある程度を超えたら線だけにする。点は線と重なっても分かるよう、
+            // カード背景色で縁取りしてから塗る
+            if (points.size <= 20) {
+                val dotRadius = if (points.size > 10) 2.5f else 4.5f
+                for (i in points.indices) {
+                    val center = offsetAt(i)
+                    drawCircle(cardColor, radius = dotRadius + 2f, center = center)
+                    drawCircle(lineColor, radius = dotRadius, center = center)
+                }
+            }
+        }
+
+        // 横軸の日付。数値の列を除いた、折れ線と同じ幅の中で均等割りにする
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = gutterWidth, top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            axisTicks.forEach { i -> ChartAxisLabel(axisDateLabel(points, i), color = axisTextColor) }
         }
     }
-}
-
-/**
- * 横罫線を引く値の一覧。値幅がどれだけ広くても目盛りの本数がだいたい一定になるよう、
- * 「1・2・5×10^n」のキリのいい間隔を選ぶ（全期間のように記録が数年分にわたって
- * 値幅が大きいときに、目盛りが2本しか出ず読みづらくなるのを防ぐ）。
- * 目標線とほぼ重なる目盛りは間引いて、同じ高さに2本線が並んで見えるのを防ぐ。
- *
- * - 生成する目盛りの数は [MAX_GRID_TICKS] で必ず打ち切る。体重・目標体重は
- *   上限を検証していない（[com.hinata.fitlog.domain.parseRequiredDouble] は
- *   正の有限数なら何でも通す）ため、誤って極端な値が入ると際限なく目盛りを
- *   作ろうとしてしまう安全弁。
- * - キリのいい値が範囲内に1つも収まらない（70.1〜70.4kgのような小さな増減など）
- *   場合は目盛りが空になり数値の手がかりが消えてしまうため、最小・最大の実測値に
- *   フォールバックする。
- */
-private const val MAX_GRID_TICKS = 8
-private const val TARGET_GRID_TICKS = 5
-
-private fun gridTicks(min: Double, max: Double, goal: Double?): List<Double> {
-    val range = max - min
-    if (range <= 0.0) return listOf(min)
-    val step = niceStep(range / TARGET_GRID_TICKS)
-    val start = ceil(min / step) * step
-    val roundedTicks = generateSequence(start) { it + step }
-        .takeWhile { it <= max + 1e-6 }
-        .take(MAX_GRID_TICKS)
-        .toList()
-    val filtered = if (goal == null) roundedTicks else roundedTicks.filter { abs(it - goal) > step * 0.25 }
-    return filtered.ifEmpty { listOf(min, max) }
-}
-
-/**
- * [rawStep] にいちばん近い「1・2・5×10^n」の値に丸める（0.5kg未満にはしない）。
- *
- * しきい値は 1/2/5 それぞれの中間（1.5, 3.5, 7.5）にする。単純に
- * 「normalized <= 2.0 なら2、それ以外は5」のような切り上げ式にすると、
- * しきい値のすぐ上（例: normalized=2.02）で本来2を選びたいのに5まで
- * 一気に飛んでしまい、目盛りの本数が想定より大きく減ってしまう。
- */
-private fun niceStep(rawStep: Double): Double {
-    val safe = rawStep.coerceAtLeast(0.05)
-    val magnitude = 10.0.pow(floor(log10(safe)))
-    val normalized = safe / magnitude
-    val niceNormalized = when {
-        normalized <= 1.5 -> 1.0
-        normalized <= 3.5 -> 2.0
-        normalized <= 7.5 -> 5.0
-        else -> 10.0
-    }
-    return (niceNormalized * magnitude).coerceAtLeast(0.5)
 }
 
 /**
@@ -487,19 +429,6 @@ private fun axisDateLabel(points: List<WeightEntity>, index: Int): String {
     } else {
         "${date.year}/${date.monthValue}"
     }
-}
-
-/** 横罫線の脇に数値(kg)を出すための小さいラベル。線と重なっても読めるよう背景を敷く */
-@Composable
-private fun ChartValueLabel(text: String, color: Color, modifier: Modifier = Modifier) {
-    Text(
-        text,
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-            .padding(horizontal = 4.dp, vertical = 1.dp),
-        style = MaterialTheme.typography.labelSmall,
-        color = color,
-    )
 }
 
 @Composable
