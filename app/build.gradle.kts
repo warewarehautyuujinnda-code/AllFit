@@ -106,6 +106,9 @@ dependencies {
     // JSON（書き出し・読み込み用）
     implementation(libs.kotlinx.serialization.json)
 
+    // 記録詳細の経路を衛星写真の地図に重ねて描く。Google Maps SDK と違いAPIキーが要らない
+    implementation(libs.osmdroid.android)
+
     // 単体テスト。domain パッケージは Android に依存しないため JVM 上でそのまま動かせる
     testImplementation(libs.junit)
 }
