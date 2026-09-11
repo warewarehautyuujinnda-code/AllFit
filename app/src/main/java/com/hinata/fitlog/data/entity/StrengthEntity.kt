@@ -16,8 +16,17 @@ data class StrengthEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     /** 記録日（ISO-8601: yyyy-MM-dd） */
     val date: String,
-    /** 種目名 */
+    /** 種目名。種目の説明（[ExerciseEntity]）とはこの名前で紐づく */
     val ex: String,
     /** 部位（BodyPart の id）。任意。version 2 で追加したため既存記録は null */
     val part: String? = null,
+    /**
+     * その回のメモ（感覚・感想・フォームで意識したことなど）。任意。
+     * version 8 で追加したため、それより前の記録は null。
+     *
+     * 種目の説明（[ExerciseEntity.description]）が「その種目とは何か」なのに対し、
+     * こちらは「その回どうだったか」を積み上げるもの。どちらも書き出しJSONに入るので、
+     * AI に渡したときに種目ごとの解像度が上がる。
+     */
+    val memo: String? = null,
 )

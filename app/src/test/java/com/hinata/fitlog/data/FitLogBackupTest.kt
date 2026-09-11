@@ -1,5 +1,6 @@
 package com.hinata.fitlog.data
 
+import com.hinata.fitlog.data.entity.ExerciseEntity
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.StrengthEntity
@@ -23,7 +24,21 @@ class FitLogBackupTest {
         exportedAt = "2026-08-11T00:00:00Z",
         weight = listOf(WeightEntity(id = "w1", date = "2026-08-11", weight = 70.2, fat = 18.4)),
         strength = listOf(
-            StrengthEntity(id = "s1", date = "2026-08-11", ex = "ベンチプレス")
+            StrengthEntity(
+                id = "s1",
+                date = "2026-08-11",
+                ex = "ベンチプレス",
+                memo = "肩甲骨を寄せる意識がつかめた",
+            )
+        ),
+        exercise = listOf(
+            ExerciseEntity(
+                name = "ベンチプレス",
+                part = "chest",
+                description = "ワイドグリップ。肩甲骨を寄せて胸を張る",
+                createdAt = "2026-08-11T00:00:00Z",
+                updatedAt = "2026-08-11T00:00:00Z",
+            )
         ),
         strengthSet = listOf(
             StrengthSetEntity(id = "ss1", recordId = "s1", setIndex = 0, weight = 60.0, reps = 10),
@@ -68,6 +83,28 @@ class FitLogBackupTest {
     fun `日本語がそのまま読める形で書き出される`() {
         val json = exportJson.encodeToString(FitLogBackup.serializer(), backup)
         assertTrue("ベンチプレス" in json)
+    }
+
+    @Test
+    fun `種目の説明と記録のメモも書き出して読み込める`() {
+        val json = exportJson.encodeToString(FitLogBackup.serializer(), backup)
+        assertTrue("\"exercise\"" in json)
+        assertTrue("ワイドグリップ。肩甲骨を寄せて胸を張る" in json)
+        assertTrue("肩甲骨を寄せる意識がつかめた" in json)
+
+        val decoded = importJson.decodeFromString(FitLogBackup.serializer(), json)
+        assertEquals(backup.exercise, decoded.exercise)
+        assertEquals("肩甲骨を寄せる意識がつかめた", decoded.strength.single().memo)
+    }
+
+    @Test
+    fun `種目の説明が無い古いファイルも読み込める`() {
+        val decoded = importJson.decodeFromString(
+            FitLogBackup.serializer(),
+            """{"strength":[{"id":"s1","date":"2026-08-11","ex":"ベンチプレス"}]}""",
+        )
+        assertTrue(decoded.exercise.isEmpty())
+        assertEquals(null, decoded.strength.single().memo)
     }
 
     @Test

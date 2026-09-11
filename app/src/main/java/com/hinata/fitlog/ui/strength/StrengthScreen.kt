@@ -3,6 +3,7 @@ package com.hinata.fitlog.ui.strength
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +31,7 @@ private sealed interface StrengthRoute {
 @Composable
 fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
     val items by viewModel.items.collectAsState()
+    val exercises by viewModel.exercises.collectAsState()
     val pendingExercises by viewModel.pendingExercises.collectAsState()
     val weekTargets by viewModel.weekTargets.collectAsState()
 
@@ -39,6 +41,11 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
     // 画面を切り替えても同じ状態を使い回すので、保存直後のメッセージが遷移先で出せる
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // 種目の追加・編集・削除の結果は、画面をまたいで同じスナックバーに出す
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
+    }
 
     val today = LocalDate.now()
     val selected = remember(selectedDate) {
@@ -62,26 +69,39 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
 
         StrengthRoute.Picker -> ExercisePickerScreen(
             records = items,
+            exercises = exercises,
             today = today,
             plannedExercises = pendingExercises,
+            snackbarHostState = snackbarHostState,
             onBack = { route = StrengthRoute.Calendar },
             onPick = { ref -> route = StrengthRoute.Input(ref) },
+            onAddExercise = { name, part -> viewModel.addExercise(name, part) },
+            onEditExercise = { currentName, newName, description, part ->
+                viewModel.updateExercise(currentName, newName, description, part)
+            },
+            onHideExercise = { name, part -> viewModel.hideExercise(name, part) },
         )
 
         is StrengthRoute.Input -> SetInputScreen(
             ref = current.ref,
             date = selectedDate,
+            description = exercises.firstOrNull { it.name.trim() == current.ref.ex.trim() }?.description,
             lastRecord = items.firstOrNull { it.record.ex == current.ref.ex },
+            // 直近の記録にメモが無いこともあるので、メモのある一番新しい記録を探して出す
+            lastMemoRecord = items.firstOrNull {
+                it.record.ex == current.ref.ex && !it.record.memo.isNullOrBlank()
+            },
             weekTarget = weekTargets.firstOrNull { it.exerciseName.trim() == current.ref.ex.trim() },
             snackbarHostState = snackbarHostState,
             onDateChange = { selectedDate = it },
             onBack = { route = StrengthRoute.Picker },
-            onSave = { sets ->
+            onSave = { sets, memo ->
                 val ok = viewModel.save(
                     date = selectedDate,
                     exText = current.ref.ex,
                     part = current.ref.part,
                     sets = sets,
+                    memo = memo,
                 )
                 if (ok) route = StrengthRoute.Calendar
                 scope.launch {

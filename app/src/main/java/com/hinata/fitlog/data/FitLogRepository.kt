@@ -1,6 +1,7 @@
 package com.hinata.fitlog.data
 
 import androidx.room.withTransaction
+import com.hinata.fitlog.data.entity.ExerciseEntity
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +33,7 @@ class FitLogRepository(private val db: AppDatabase) {
     private val runningSplitDao = db.runningSplitDao()
     private val strengthSetDao = db.strengthSetDao()
     private val runningPointDao = db.runningPointDao()
+    private val exerciseDao = db.exerciseDao()
 
     /**
      * 書き出し用の JSON 設定。
@@ -71,6 +73,7 @@ class FitLogRepository(private val db: AppDatabase) {
             runningSplit = runningSplitDao.getAll(),
             strengthSet = strengthSetDao.getAll(),
             runningPoint = runningPointDao.getAll(),
+            exercise = exerciseDao.getAll(),
         )
         exportJson.encodeToString(FitLogBackup.serializer(), backup)
     }
@@ -103,12 +106,40 @@ class FitLogRepository(private val db: AppDatabase) {
                 runningSplitDao.upsertAll(backup.runningSplit)
                 strengthSetDao.upsertAll(backup.strengthSet)
                 runningPointDao.upsertAll(backup.runningPoint)
+                importExercises(backup.exercise)
             }
             backup
         }
     }
 
-    /** すべての記録を削除する（FR-13）。4テーブルが中途半端に消えないよう一括で行う */
+    /**
+     * 読み込んだ種目の定義を取り込む。
+     *
+     * 説明は利用者が書いた文章なので、記録のように id で上書きせず [mergeImportedExercise] で
+     * すり合わせる（古いバックアップを読んで新しい説明を失わないようにするため）。
+     * 最後に、記録にあるのに定義が無い種目を作り、どの種目にも説明を書ける状態にそろえる。
+     */
+    private suspend fun importExercises(imported: List<ExerciseEntity>) {
+        imported.forEach { incoming ->
+            val name = incoming.name.trim()
+            if (name.isEmpty()) return@forEach
+            val local = exerciseDao.findByName(name)
+            if (local == null) {
+                exerciseDao.insertIfAbsent(incoming.copy(name = name))
+            } else {
+                val merged = mergeImportedExercise(local, incoming.copy(name = name))
+                if (merged != local) exerciseDao.update(merged)
+            }
+        }
+        exerciseDao.insertMissingFromRecords(isoNow())
+    }
+
+    /**
+     * すべての記録を削除する（FR-13）。4テーブルが中途半端に消えないよう一括で行う。
+     *
+     * 種目の定義（説明）はここでも消さない。利用者が書いた種目の説明は記録そのものではなく、
+     * 消さずに残す決まりにしている（CLAUDE.md の絶対ルール）。
+     */
     suspend fun deleteAll() = withContext(Dispatchers.IO) {
         db.withTransaction {
             weightDao.deleteAll()

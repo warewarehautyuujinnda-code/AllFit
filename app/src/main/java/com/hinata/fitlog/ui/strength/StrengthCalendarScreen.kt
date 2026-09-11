@@ -278,7 +278,7 @@ private fun MetricDivider() {
 
 /**
  * カードは集計しか出さないため、その日その種目の個々の記録をセット単位で一覧に見せる。
- * 新しい画面遷移は作らず、カレンダー画面内で完結するダイアログにしている。
+ * その回に書いたメモもここで読める。新しい画面遷移は作らず、カレンダー画面内で完結するダイアログにしている。
  */
 @Composable
 private fun ExerciseRecordsDialog(
@@ -303,6 +303,15 @@ private fun ExerciseRecordsDialog(
                             "${setIndex + 1}セット目: ${describeSet(set)}",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+                        )
+                    }
+                    val memo = record.record.memo
+                    if (!memo.isNullOrBlank()) {
+                        Text(
+                            "メモ: $memo",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 8.dp, top = 4.dp),
                         )
                     }
                 }
