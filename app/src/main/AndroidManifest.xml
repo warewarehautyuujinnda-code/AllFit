@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <!-- Android 13+ で計測中の常駐通知を表示するために必要 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 記録詳細の経路図で衛星写真の地図タイルを取得するためだけに使う（記録データは送らない） -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:name=".FitLogApp"
