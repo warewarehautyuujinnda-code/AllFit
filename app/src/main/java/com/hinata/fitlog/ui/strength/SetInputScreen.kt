@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,20 +60,27 @@ private class SetInput(weight: String = "", reps: String = "") {
  * 新しい行を追加すると直前の行の値をコピーするため、値が変わらないセットは
  * そのまま追加するだけで済み、変えたいセットだけをその行で編集すればよい。
  * 重量・回数はいずれも任意（自重トレを記録できるようにするため）。
+ *
+ * その回のメモも書ける。感覚や感想を種目に紐づけて積み上げていくための欄で、
+ * 書き出したJSONにも入るため、あとからAIに渡したときに数字だけでは分からない部分が読める。
+ * 種目の説明と前回のメモをここに出しているのは、前回どうだったかを踏まえて書けるようにするため。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SetInputScreen(
     ref: ExerciseRef,
     date: String,
+    description: String?,
     lastRecord: StrengthRecordWithSets?,
+    lastMemoRecord: StrengthRecordWithSets?,
     weekTarget: WeeklyStrengthTargetEntity?,
     snackbarHostState: SnackbarHostState,
     onDateChange: (String) -> Unit,
     onBack: () -> Unit,
-    onSave: (sets: List<Pair<String, String>>) -> Unit,
+    onSave: (sets: List<Pair<String, String>>, memo: String) -> Unit,
 ) {
     val sets = remember { mutableStateListOf(SetInput()) }
+    var memo by rememberSaveable { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -111,9 +119,28 @@ fun SetInputScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
+            if (!description.isNullOrBlank()) {
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+
             if (lastRecord != null) {
                 Text(
                     "前回(${lastRecord.record.date}): ${describeRecord(lastRecord)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+
+            val lastMemo = lastMemoRecord?.record?.memo
+            if (!lastMemo.isNullOrBlank()) {
+                Text(
+                    "前回のメモ(${lastMemoRecord.record.date}): $lastMemo",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),
@@ -204,8 +231,20 @@ fun SetInputScreen(
                 Text("セットを追加", modifier = Modifier.padding(start = 4.dp))
             }
 
+            OutlinedTextField(
+                value = memo,
+                onValueChange = { memo = it },
+                label = { Text("メモ（任意）") },
+                placeholder = { Text("例: 肩甲骨を寄せる意識がつかめた。最後の2セットは肘が開きがち") },
+                supportingText = { Text("その日の感覚・フォームで意識したこと・調子など") },
+                minLines = 3,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+            )
+
             Button(
-                onClick = { onSave(sets.map { it.weight to it.reps }) },
+                onClick = { onSave(sets.map { it.weight to it.reps }, memo) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp),

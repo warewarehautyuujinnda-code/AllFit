@@ -119,7 +119,8 @@ fun DataScreen(viewModel: DataViewModel = viewModel()) {
 
             Text("全データ削除", style = MaterialTheme.typography.titleMedium)
             Text(
-                "4種別すべての記録を消します。元に戻せないので、先に書き出しておくことをおすすめします。",
+                "4種別すべての記録を消します。元に戻せないので、先に書き出しておくことをおすすめします。" +
+                    "種目の説明は記録そのものではないので、ここでは消えません。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

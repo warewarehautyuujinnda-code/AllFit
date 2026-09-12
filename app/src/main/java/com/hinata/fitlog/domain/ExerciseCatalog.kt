@@ -1,5 +1,6 @@
 package com.hinata.fitlog.domain
 
+import com.hinata.fitlog.data.entity.ExerciseEntity
 import com.hinata.fitlog.data.entity.StrengthEntity
 import com.hinata.fitlog.data.entity.StrengthRecordWithSets
 
@@ -117,4 +118,34 @@ fun exercisesOf(part: BodyPart, records: List<StrengthRecordWithSets>): List<Str
     val presets = presetExercises(part).filter { it in recorded }
     val extra = recorded.filterNot { it in presets }
     return presets + extra
+}
+
+/** 一覧から削除（非表示）にした種目名。記録は残っているので、一覧に出すかどうかの判定だけに使う */
+fun hiddenExerciseNames(exercises: List<ExerciseEntity>): Set<String> =
+    exercises.filter { it.hiddenAt != null }.mapTo(mutableSetOf()) { it.name.trim() }
+
+/** 種目の部位。定義に入っていなければ種目名からプリセットを引く */
+fun exercisePartOf(exercise: ExerciseEntity): BodyPart? =
+    BodyPart.fromId(exercise.part) ?: presetPartOf(exercise.name)
+
+/**
+ * 種目名の入力チェック。問題があれば画面に出す文言を返す（問題なければ null）。
+ *
+ * 種目名は記録と種目の定義を結ぶキーなので、ほかの種目と同じ名前は付けられない。
+ * 一覧から削除した種目は画面から見えないぶん、ぶつかったときにどうすれば戻せるかも伝える。
+ */
+fun exerciseNameError(
+    input: String,
+    currentName: String?,
+    visibleNames: Set<String>,
+    hiddenNames: Set<String>,
+): String? {
+    val name = input.trim()
+    return when {
+        name.isEmpty() -> "種目名を入力してください"
+        name == currentName?.trim() -> null
+        name in hiddenNames -> "一覧から削除した種目と同じ名前です。鉛筆ボタンから同じ名前で追加すると戻せます"
+        name in visibleNames -> "同じ名前の種目がすでにあります"
+        else -> null
+    }
 }

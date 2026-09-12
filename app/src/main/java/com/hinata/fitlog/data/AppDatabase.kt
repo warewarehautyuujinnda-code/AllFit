@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.hinata.fitlog.data.dao.ExerciseDao
 import com.hinata.fitlog.data.dao.MealDao
 import com.hinata.fitlog.data.dao.GoalDao
 import com.hinata.fitlog.data.dao.RunningDao
@@ -16,6 +17,7 @@ import com.hinata.fitlog.data.dao.StrengthSetDao
 import com.hinata.fitlog.data.dao.WeightDao
 import com.hinata.fitlog.data.dao.WeeklyPlanDao
 import com.hinata.fitlog.data.dao.WeeklyStrengthTargetDao
+import com.hinata.fitlog.data.entity.ExerciseEntity
 import com.hinata.fitlog.data.entity.GoalEntity
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.RunningEntity
@@ -43,8 +45,9 @@ import java.util.UUID
         GoalEntity::class,
         WeeklyPlanEntity::class,
         WeeklyStrengthTargetEntity::class,
+        ExerciseEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -58,6 +61,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun goalDao(): GoalDao
     abstract fun weeklyPlanDao(): WeeklyPlanDao
     abstract fun weeklyStrengthTargetDao(): WeeklyStrengthTargetDao
+    abstract fun exerciseDao(): ExerciseDao
 
     companion object {
         /**
@@ -205,6 +209,46 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * 種目の定義（exercise）を持つテーブルと、記録ごとのメモ（strength.memo）を追加した。
+         *
+         * それまで種目は「記録に書かれた名前」でしかなく、説明を書き残す場所が無かった。
+         * 既存の記録にある種目名はすべて exercise に取り込み、どの種目にもすぐ説明を書ける状態にする
+         * （部位はその種目の直近の記録から引く）。テーブルと列の追加だけなので既存の記録はそのまま残り、
+         * 破壊的フォールバックも使わない。
+         */
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE strength ADD COLUMN memo TEXT")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `exercise` (
+                        `name` TEXT NOT NULL,
+                        `part` TEXT,
+                        `description` TEXT,
+                        `hiddenAt` TEXT,
+                        `createdAt` TEXT,
+                        `updatedAt` TEXT,
+                        PRIMARY KEY(`name`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT OR IGNORE INTO exercise (name, part, description, hiddenAt, createdAt, updatedAt)
+                    SELECT s.ex,
+                           (SELECT s2.part FROM strength AS s2
+                             WHERE s2.ex = s.ex AND s2.part IS NOT NULL
+                             ORDER BY s2.date DESC LIMIT 1),
+                           NULL, NULL,
+                           strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+                           strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+                    FROM strength AS s GROUP BY s.ex
+                    """.trimIndent()
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -216,7 +260,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "fitlog.db",
                 ).addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                    MIGRATION_6_7,
+                    MIGRATION_6_7, MIGRATION_7_8,
                 ).build()
                     .also { INSTANCE = it }
             }

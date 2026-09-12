@@ -1,5 +1,6 @@
 package com.hinata.fitlog.data
 
+import com.hinata.fitlog.data.entity.ExerciseEntity
 import com.hinata.fitlog.data.entity.MealEntity
 import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.RunningPointEntity
@@ -34,6 +35,12 @@ data class FitLogBackup(
     val strengthSet: List<StrengthSetEntity> = emptyList(),
     /** GPS計測したランの経路（緯度経度の並び）。手入力の記録では対応する要素はない */
     val runningPoint: List<RunningPointEntity> = emptyList(),
+    /**
+     * 種目の定義（説明・部位・一覧から削除したかどうか）。
+     * 記録は「いつ何をしたか」しか持たないので、AI に渡したときに
+     * 「その種目がどういうものか」を突き合わせて読めるようにここに含める。
+     */
+    val exercise: List<ExerciseEntity> = emptyList(),
 ) {
     /** 収録されている記録の総件数（内訳は記録そのものではないため件数には含めない） */
     val totalCount: Int
