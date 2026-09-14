@@ -24,6 +24,13 @@ interface RunningDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<RunningEntity>)
 
+    /**
+     * メモだけを書き換える。記録まるごとの上書き（[upsert]）にしないのは、
+     * 距離・時間・登録日時といった他の項目を巻き込んで書き換えてしまわないようにするため。
+     */
+    @Query("UPDATE running SET memo = :memo WHERE id = :id")
+    suspend fun updateMemo(id: String, memo: String?)
+
     @Query("DELETE FROM running WHERE id = :id")
     suspend fun deleteById(id: String)
 

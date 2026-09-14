@@ -102,6 +102,7 @@ fun RunningScreen(viewModel: RunningViewModel = viewModel()) {
                     viewModel.delete(item)
                     route = RunningRoute.List
                 },
+                onSaveMemo = { memo -> viewModel.saveMemo(item, memo) },
             )
         }
     }

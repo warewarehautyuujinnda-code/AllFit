@@ -47,6 +47,14 @@ class RunningRepository(private val db: AppDatabase) {
         }
     }
 
+    /**
+     * 走り終わったあとに書くメモを保存する。空文字は null として保存し、空のメモを貯めない。
+     * メモの列だけを更新するため、距離・時間・登録日時や、内訳・経路には触れない。
+     */
+    suspend fun updateMemo(id: String, memo: String?) = withContext(Dispatchers.IO) {
+        runningDao.updateMemo(id, memo?.trim()?.ifBlank { null })
+    }
+
     /** 記録を削除する。内訳・経路が残らないよう同じトランザクションで消す */
     suspend fun deleteRun(id: String) = withContext(Dispatchers.IO) {
         db.withTransaction {
