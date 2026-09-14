@@ -78,7 +78,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.delay
 
 /** 種目の行を押し続けて、編集・削除のメニューが出るまでの時間 */
-private const val LONG_PRESS_MILLIS = 3_000L
+private const val LONG_PRESS_MILLIS = 1_500L
 
 /**
  * 押し始めてから進み具合を出し始めるまでの待ち。
@@ -88,7 +88,7 @@ private const val HOLD_FEEDBACK_DELAY_MILLIS = 400L
 
 /**
  * 長押しの判定時間だけ差し替えた設定。Compose の長押し判定はこの値（longPressTimeoutMillis）を見るため、
- * これを配下に流すことで「3秒押し続けたらメニュー」を素の combinedClickable のまま実現できる。
+ * これを配下に流すことで「1.5秒押し続けたらメニュー」を素の combinedClickable のまま実現できる。
  */
 private class LongPressViewConfiguration(
     base: ViewConfiguration,
@@ -98,7 +98,7 @@ private class LongPressViewConfiguration(
 /**
  * 部位タブから種目を選ぶ画面。
  * プリセットに無い種目も右上の鉛筆から自由入力で追加できる。
- * 行を約3秒長押しすると、その種目の編集（種目名・説明）と一覧からの削除ができる。
+ * 行を約1.5秒長押しすると、その種目の編集（種目名・説明）と一覧からの削除ができる。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -191,7 +191,7 @@ fun ExercisePickerScreen(
                 )
             } else {
                 Text(
-                    "種目を長押し（約3秒）すると、編集・削除ができます",
+                    "種目を長押し（約1.5秒）すると、編集・削除ができます",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -296,8 +296,8 @@ private fun PartTab(
 }
 
 /**
- * 種目1件分の行。タップでその種目の記録へ進み、約3秒の長押しで編集・削除のメニューを出す。
- * 3秒は押し続けられているか分からなくなる長さなので、押している間は行の下に進み具合のゲージを描く。
+ * 種目1件分の行。タップでその種目の記録へ進み、約1.5秒の長押しで編集・削除のメニューを出す。
+ * ふつうのタップより長く押し続ける必要があるので、押している間は行の下に進み具合のゲージを描く。
  * 長押し中かどうかを自分で持つために、interactionSource を渡せる combinedClickable を使っている。
  */
 @OptIn(ExperimentalFoundationApi::class)
