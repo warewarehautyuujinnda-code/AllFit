@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -189,7 +188,20 @@ private fun MemoSection(memo: String?, onSave: (String) -> Unit, modifier: Modif
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (!editing) {
+            // 「キャンセル」「保存」は入力欄の下ではなくこの見出しの行に置く。この画面は縦スクロール
+            // しないため、下に置くとキーボードが出た狭い画面で入力欄に押し出されて押せなくなる。
+            if (editing) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = {
+                        draft = memo.orEmpty()
+                        editing = false
+                    }) { Text("キャンセル") }
+                    TextButton(onClick = {
+                        onSave(draft)
+                        editing = false
+                    }) { Text("保存") }
+                }
+            } else {
                 TextButton(onClick = { editing = true }) {
                     Text(if (memo.isNullOrBlank()) "メモを書く" else "編集")
                 }
@@ -202,25 +214,12 @@ private fun MemoSection(memo: String?, onSave: (String) -> Unit, modifier: Modif
                 onValueChange = { draft = it },
                 placeholder = { Text("例: 後半で脚が残った。呼吸は最後まで乱れなかった") },
                 supportingText = { Text("走り終わったあとの感覚・コース・体調など") },
+                // 長いメモを書いても入力欄が画面いっぱいに伸びて他を押し出さないよう、高さの上限を決める
+                // （これ以上は入力欄の中がスクロールする）
                 minLines = 3,
+                maxLines = MEMO_EDITOR_MAX_LINES,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = {
-                    draft = memo.orEmpty()
-                    editing = false
-                }) { Text("キャンセル") }
-                Button(
-                    onClick = {
-                        onSave(draft)
-                        editing = false
-                    },
-                    modifier = Modifier.padding(start = 8.dp),
-                ) { Text("保存") }
-            }
         } else if (memo.isNullOrBlank()) {
             Text(
                 "まだメモがありません",
@@ -267,3 +266,6 @@ private fun SplitRow(minuteIndex: Int, cumulativeDistanceKm: Double, pace: Strin
         )
     }
 }
+
+/** メモの入力欄の高さの上限（行数）。これを超えると入力欄の中がスクロールする */
+private const val MEMO_EDITOR_MAX_LINES = 6
