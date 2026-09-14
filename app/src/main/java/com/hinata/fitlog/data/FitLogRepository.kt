@@ -88,6 +88,10 @@ class FitLogRepository(private val db: AppDatabase) {
      * 解析に失敗した場合は DB に一切触れずに戻る。書き込みも1つのトランザクションに
      * まとめてあるので、途中で失敗しても既存データは壊れない。
      *
+     * 登録日時（createdAt）は読み込んだ側に値があるときだけ上書きする（[keepKnownCreatedAt]）。
+     * 古いバックアップには登録日時が無いため、そのまま上書きすると端末にある記録の
+     * 「いつ入力したか」を失ってしまう。
+     *
      * @return 成功なら読み込んだ内容、失敗なら例外を保持した [Result]
      */
     suspend fun import(json: String): Result<FitLogBackup> = withContext(Dispatchers.IO) {
@@ -99,10 +103,31 @@ class FitLogRepository(private val db: AppDatabase) {
 
         runCatching {
             db.withTransaction {
-                weightDao.upsertAll(backup.weight)
-                strengthDao.upsertAll(backup.strength)
-                runningDao.upsertAll(backup.running)
-                mealDao.upsertAll(backup.meal)
+                // 登録日時（createdAt）が無い古いバックアップで、端末にある登録日時を消さないようにする
+                weightDao.upsertAll(
+                    keepKnownCreatedAt(
+                        backup.weight, weightDao.getAll(),
+                        { it.id }, { it.createdAt }, { r, at -> r.copy(createdAt = at) },
+                    )
+                )
+                strengthDao.upsertAll(
+                    keepKnownCreatedAt(
+                        backup.strength, strengthDao.getAll(),
+                        { it.id }, { it.createdAt }, { r, at -> r.copy(createdAt = at) },
+                    )
+                )
+                runningDao.upsertAll(
+                    keepKnownCreatedAt(
+                        backup.running, runningDao.getAll(),
+                        { it.id }, { it.createdAt }, { r, at -> r.copy(createdAt = at) },
+                    )
+                )
+                mealDao.upsertAll(
+                    keepKnownCreatedAt(
+                        backup.meal, mealDao.getAll(),
+                        { it.id }, { it.createdAt }, { r, at -> r.copy(createdAt = at) },
+                    )
+                )
                 runningSplitDao.upsertAll(backup.runningSplit)
                 strengthSetDao.upsertAll(backup.strengthSet)
                 runningPointDao.upsertAll(backup.runningPoint)

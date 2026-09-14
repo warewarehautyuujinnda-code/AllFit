@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.WeightEntity
+import com.hinata.fitlog.data.isoNow
 import com.hinata.fitlog.domain.TrendPeriod
 import com.hinata.fitlog.domain.WeightTrend
 import com.hinata.fitlog.domain.parseRequiredDouble
@@ -55,7 +56,9 @@ class WeightViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             // 体脂肪率は入力欄ごと廃止したので常に未記録。列は既存データを守るため残してある
-            dao.upsert(WeightEntity(date = date, weight = weight, fat = null))
+            dao.upsert(
+                WeightEntity(date = date, weight = weight, fat = null, createdAt = isoNow())
+            )
         }
         return true
     }

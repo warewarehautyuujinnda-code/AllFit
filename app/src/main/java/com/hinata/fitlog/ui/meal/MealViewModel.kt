@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hinata.fitlog.FitLogApp
 import com.hinata.fitlog.data.entity.MealEntity
+import com.hinata.fitlog.data.isoNow
 import com.hinata.fitlog.domain.MealTotals
 import com.hinata.fitlog.domain.mealTotalsOf
 import com.hinata.fitlog.domain.parseOptionalDouble
@@ -66,6 +67,7 @@ class MealViewModel(app: Application) : AndroidViewModel(app) {
                     p = p.value,
                     f = f.value,
                     c = c.value,
+                    createdAt = isoNow(),
                 )
             )
         }

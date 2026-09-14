@@ -2,13 +2,6 @@ package com.hinata.fitlog.data
 
 import com.hinata.fitlog.data.entity.ExerciseEntity
 import java.time.Instant
-import java.time.temporal.ChronoUnit
-
-/**
- * 種目の作成・更新日時に使う現在時刻（ISO-8601・秒まで・UTC）。
- * 桁が揃うので、書き出したJSONを人やAIが読んでも分かり、文字列のままでも前後が狂わない。
- */
-fun isoNow(): String = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
 
 /**
  * 読み込み（FR-12）で、端末にすでにある種目の定義と読み込んだ定義をすり合わせる。

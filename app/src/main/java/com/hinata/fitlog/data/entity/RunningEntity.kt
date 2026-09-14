@@ -22,4 +22,11 @@ data class RunningEntity(
     val kcal: Int? = null,
     /** メモ。任意。version 4 で追加したため既存記録は null */
     val memo: String? = null,
+    /**
+     * この記録を登録した日時（ISO-8601・秒まで・UTC）。記録日（[date]）が「いつの記録か」なのに対し、
+     * こちらは「いつ入力したか」。同じ日に入れた記録の前後や、後からまとめて入力したのかが分かる。
+     * GPS計測した記録は、計測結果を保存した時点の日時。
+     * version 9 で追加したため、それより前に登録した記録は null。
+     */
+    val createdAt: String? = null,
 )

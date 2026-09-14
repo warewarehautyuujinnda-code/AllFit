@@ -47,7 +47,7 @@ import java.util.UUID
         WeeklyStrengthTargetEntity::class,
         ExerciseEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -249,6 +249,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * 4種別（体重・筋トレ・ラン・食事）の記録に「登録した日時」(createdAt) を足した。
+         *
+         * それまで記録が持つ日時は記録日（date = yyyy-MM-dd）だけで、いつ入力したかが残っていなかった。
+         * 同じ日の記録の前後や、後からまとめて入力したのかを書き出しJSONから読めるようにするため、
+         * 種目の定義（exercise.createdAt）と同じ形（ISO-8601・秒まで・UTC）で持たせる。
+         *
+         * 列の追加だけなので既存の記録はそのまま残る。過去の記録は登録日時が分からないため null のままにし、
+         * 記録日から推測した値を入れてしまわない（あとから「いつ入力したか」として読めなくなるため）。
+         * 破壊的フォールバックは使わない（利用者の実データが消えるため）。
+         */
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE weight ADD COLUMN createdAt TEXT")
+                db.execSQL("ALTER TABLE strength ADD COLUMN createdAt TEXT")
+                db.execSQL("ALTER TABLE running ADD COLUMN createdAt TEXT")
+                db.execSQL("ALTER TABLE meal ADD COLUMN createdAt TEXT")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -260,7 +280,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "fitlog.db",
                 ).addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                    MIGRATION_6_7, MIGRATION_7_8,
+                    MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
                 ).build()
                     .also { INSTANCE = it }
             }

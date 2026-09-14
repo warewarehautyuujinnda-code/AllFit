@@ -24,4 +24,10 @@ data class MealEntity(
     val f: Double? = null,
     /** 炭水化物(g)。任意 */
     val c: Double? = null,
+    /**
+     * この記録を登録した日時（ISO-8601・秒まで・UTC）。記録日（[date]）が「いつの記録か」なのに対し、
+     * こちらは「いつ入力したか」。同じ日に入れた記録の前後や、後からまとめて入力したのかが分かる。
+     * version 9 で追加したため、それより前に登録した記録は null。
+     */
+    val createdAt: String? = null,
 )
