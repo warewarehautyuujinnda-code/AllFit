@@ -124,6 +124,14 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
         return true
     }
 
+    /**
+     * 走り終わったあとに記録詳細画面から書くメモを保存する。
+     * 空欄にした場合はメモ無し（null）に戻す。
+     */
+    fun saveMemo(item: RunningEntity, memoText: String) {
+        viewModelScope.launch { repository.updateMemo(item.id, memoText) }
+    }
+
     /** 記録を削除する。GPS内訳があれば一緒に削除する */
     fun delete(item: RunningEntity) {
         viewModelScope.launch { repository.deleteRun(item.id) }
