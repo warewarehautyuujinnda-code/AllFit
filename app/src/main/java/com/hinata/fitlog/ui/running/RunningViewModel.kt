@@ -8,6 +8,7 @@ import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.RunningPointEntity
 import com.hinata.fitlog.data.entity.RunningSplitEntity
 import com.hinata.fitlog.data.entity.WeeklyPlanEntity
+import com.hinata.fitlog.data.isoNow
 import com.hinata.fitlog.domain.RunningMetric
 import com.hinata.fitlog.domain.RunningTrend
 import com.hinata.fitlog.domain.RunningTrendPeriod
@@ -116,6 +117,7 @@ class RunningViewModel(app: Application) : AndroidViewModel(app) {
                     min = min.value,
                     kcal = null,
                     memo = memoText.trim().ifBlank { null },
+                    createdAt = isoNow(),
                 )
             )
         }

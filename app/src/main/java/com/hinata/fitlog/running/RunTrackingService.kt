@@ -18,6 +18,7 @@ import com.hinata.fitlog.R
 import com.hinata.fitlog.data.entity.RunningEntity
 import com.hinata.fitlog.data.entity.RunningPointEntity
 import com.hinata.fitlog.data.entity.RunningSplitEntity
+import com.hinata.fitlog.data.isoNow
 import com.hinata.fitlog.domain.formatAmount
 import com.hinata.fitlog.domain.formatElapsed
 import com.hinata.fitlog.domain.haversineMeters
@@ -180,6 +181,7 @@ class RunTrackingService : Service() {
                 dist = distanceKm,
                 min = elapsedSec / 60.0,
                 kcal = null,
+                createdAt = isoNow(),
             )
             val savedSplits = splits.toList()
             val savedPoints = points.toList()

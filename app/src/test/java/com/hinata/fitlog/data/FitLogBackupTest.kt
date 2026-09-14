@@ -22,13 +22,22 @@ class FitLogBackupTest {
 
     private val backup = FitLogBackup(
         exportedAt = "2026-08-11T00:00:00Z",
-        weight = listOf(WeightEntity(id = "w1", date = "2026-08-11", weight = 70.2, fat = 18.4)),
+        weight = listOf(
+            WeightEntity(
+                id = "w1",
+                date = "2026-08-11",
+                weight = 70.2,
+                fat = 18.4,
+                createdAt = "2026-08-11T21:30:00Z",
+            )
+        ),
         strength = listOf(
             StrengthEntity(
                 id = "s1",
                 date = "2026-08-11",
                 ex = "ベンチプレス",
                 memo = "肩甲骨を寄せる意識がつかめた",
+                createdAt = "2026-08-11T12:05:00Z",
             )
         ),
         exercise = listOf(
@@ -52,9 +61,19 @@ class FitLogBackupTest {
                 min = 27.5,
                 kcal = 300,
                 memo = "気持ちよく走れた",
+                createdAt = "2026-08-11T06:40:00Z",
             )
         ),
-        meal = listOf(MealEntity(id = "m1", date = "2026-08-11", name = "鶏むね肉", kcal = 620, p = 45.0)),
+        meal = listOf(
+            MealEntity(
+                id = "m1",
+                date = "2026-08-11",
+                name = "鶏むね肉",
+                kcal = 620,
+                p = 45.0,
+                createdAt = "2026-08-11T19:20:00Z",
+            )
+        ),
     )
 
     @Test
@@ -146,5 +165,33 @@ class FitLogBackupTest {
     @Test
     fun `種別が欠けたファイルはその種別を空として読み込める`() {
         assertEquals(0, importJson.decodeFromString(FitLogBackup.serializer(), "{}").totalCount)
+    }
+
+    @Test
+    fun `記録を登録した日時も4種別すべて書き出して読み込める`() {
+        val json = exportJson.encodeToString(FitLogBackup.serializer(), backup)
+        assertTrue("\"createdAt\": \"2026-08-11T21:30:00Z\"" in json)
+
+        val decoded = importJson.decodeFromString(FitLogBackup.serializer(), json)
+        assertEquals("2026-08-11T21:30:00Z", decoded.weight.single().createdAt)
+        assertEquals("2026-08-11T12:05:00Z", decoded.strength.single().createdAt)
+        assertEquals("2026-08-11T06:40:00Z", decoded.running.single().createdAt)
+        assertEquals("2026-08-11T19:20:00Z", decoded.meal.single().createdAt)
+    }
+
+    @Test
+    fun `登録した日時が無い古いファイルも読み込める`() {
+        val decoded = importJson.decodeFromString(
+            FitLogBackup.serializer(),
+            """{"weight":[{"id":"w1","date":"2026-08-11","weight":70.0}],
+               "strength":[{"id":"s1","date":"2026-08-11","ex":"ベンチプレス"}],
+               "running":[{"id":"r1","date":"2026-08-11","dist":5.0}],
+               "meal":[{"id":"m1","date":"2026-08-11","name":"鶏むね肉"}]}""",
+        )
+        assertEquals(4, decoded.totalCount)
+        assertEquals(null, decoded.weight.single().createdAt)
+        assertEquals(null, decoded.strength.single().createdAt)
+        assertEquals(null, decoded.running.single().createdAt)
+        assertEquals(null, decoded.meal.single().createdAt)
     }
 }

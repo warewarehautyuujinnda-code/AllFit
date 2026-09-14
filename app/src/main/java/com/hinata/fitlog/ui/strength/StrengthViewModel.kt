@@ -10,6 +10,7 @@ import com.hinata.fitlog.data.entity.StrengthRecordWithSets
 import com.hinata.fitlog.data.entity.StrengthSetEntity
 import com.hinata.fitlog.data.entity.WeeklyPlanEntity
 import com.hinata.fitlog.data.entity.WeeklyStrengthTargetEntity
+import com.hinata.fitlog.data.isoNow
 import com.hinata.fitlog.domain.BodyPart
 import com.hinata.fitlog.domain.StrengthPlanProgress
 import com.hinata.fitlog.domain.parseOptionalDouble
@@ -104,6 +105,7 @@ class StrengthViewModel(app: Application) : AndroidViewModel(app) {
             ex = ex,
             part = part?.id,
             memo = memo.trim().ifEmpty { null },
+            createdAt = isoNow(),
         )
         val setEntities = parsedSets.mapIndexed { index, (weight, reps) ->
             StrengthSetEntity(recordId = record.id, setIndex = index, weight = weight, reps = reps)
