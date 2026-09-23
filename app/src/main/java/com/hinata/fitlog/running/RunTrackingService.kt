@@ -200,12 +200,23 @@ class RunTrackingService : Service() {
 
     private fun ensureChannel() {
         val manager = getSystemService(NotificationManager::class.java)
+        // 以前の「重要度: 低」のチャンネルはサイレント通知扱いでロック画面に出ないため作り直した。
+        // チャンネルの重要度はアプリ側から後で変えられないので、IDを変えて古い方は消す。
+        manager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
         if (manager.getNotificationChannel(CHANNEL_ID) == null) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "ランニング計測",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply { description = "ランニング計測中に表示する通知" }
+                // 「重要度: 中」にしてロック画面に表示させる。1秒ごとに更新するので音とバイブは切る
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "ランニング計測中に、ロック画面にも距離と経過時間を表示する通知"
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(false)
+                // ロックを解除しなくても距離と経過時間が読めるように、内容まで公開する
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
             manager.createNotificationChannel(channel)
         }
     }
@@ -216,8 +227,9 @@ class RunTrackingService : Service() {
     }
 
     private fun buildNotification(elapsedSec: Long, distanceKm: Double): Notification {
-        val contentText = String.format(
-            Locale.US, "%s ・ %s km", formatElapsed(elapsedSec), formatAmount(distanceKm),
+        // ロック画面ではタイトルが一番大きく出るため、走りながら見たい距離と経過時間をタイトルに置く
+        val contentTitle = String.format(
+            Locale.US, "%s km ・ %s", formatAmount(distanceKm), formatElapsed(elapsedSec),
         )
         val openAppIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
@@ -225,11 +237,16 @@ class RunTrackingService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("ランニング計測中")
-            .setContentText(contentText)
+            .setContentTitle(contentTitle)
+            .setContentText("ランニング計測中")
             .setSmallIcon(R.drawable.ic_notification_run)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setShowWhen(false)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            // ロックがかかった状態でも内容（距離・経過時間）を隠さずに表示する
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
             .build()
     }
@@ -238,7 +255,8 @@ class RunTrackingService : Service() {
         const val ACTION_START = "com.hinata.fitlog.running.action.START"
         const val ACTION_STOP = "com.hinata.fitlog.running.action.STOP"
 
-        private const val CHANNEL_ID = "running_tracking"
+        private const val CHANNEL_ID = "running_tracking_lockscreen"
+        private const val LEGACY_CHANNEL_ID = "running_tracking"
         private const val NOTIFICATION_ID = 1001
 
         /** 位置情報の更新間隔・最小移動距離。頻度と電池消費のバランスを取った値 */
