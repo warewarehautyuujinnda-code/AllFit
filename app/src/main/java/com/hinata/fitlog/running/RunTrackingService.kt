@@ -242,7 +242,6 @@ class RunTrackingService : Service() {
             .setSmallIcon(R.drawable.ic_notification_run)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setSilent(true)
             .setShowWhen(false)
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
             // ロックがかかった状態でも内容（距離・経過時間）を隠さずに表示する
