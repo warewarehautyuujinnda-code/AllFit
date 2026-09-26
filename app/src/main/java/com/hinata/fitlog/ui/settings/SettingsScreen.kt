@@ -26,8 +26,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hinata.fitlog.ui.navigation.Destination
 
 /**
- * 設定画面。下部ナビゲーションに表示するタブを選べる。
- * ホームと設定自体は常に表示されるため一覧には出さない。
+ * 設定画面。下部ナビゲーションに表示するタブを選べるほか、
+ * 「どのタブにどんな機能がほしいか」を送れるフィードバック欄（FeedbackSurveySection）を置く。
+ * ホームと設定自体は常に表示されるためタブの一覧には出さない。
  */
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
@@ -74,6 +75,10 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
                     }
                 }
             }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            FeedbackSurveySection()
         }
     }
 }
