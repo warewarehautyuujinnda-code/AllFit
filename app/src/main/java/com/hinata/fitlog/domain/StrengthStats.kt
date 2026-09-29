@@ -2,6 +2,7 @@ package com.hinata.fitlog.domain
 
 import com.hinata.fitlog.data.entity.StrengthRecordWithSets
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.temporal.ChronoUnit
 
 /**
@@ -138,3 +139,57 @@ fun frequentExercises(records: List<StrengthRecordWithSets>, limit: Int = 20): L
     )
     .take(limit)
     .map { (ex, list) -> ExerciseRef(ex, partOfExercise(list)) }
+
+/**
+ * 最大負荷 = その記録で扱った一番重い重量。回数に関わらず重量だけで見る。
+ * 重量が全セット未入力なら null。
+ */
+fun maxWeightOf(records: List<StrengthRecordWithSets>): Double? =
+    records.flatMap { it.sets }.mapNotNull { it.weight }.maxOrNull()
+
+/**
+ * 種目別推移グラフの1日分。
+ * 重量や回数が未入力の日もあるため、計算できない指標は null にしてグラフに点を打たない。
+ */
+data class ExerciseTrendPoint(
+    val date: LocalDate,
+    /** ボリューム。重量と回数がそろったセットが1つも無ければ null（0 と描くと「やっていない」に見えるため） */
+    val volume: Double?,
+    val oneRepMax: Double?,
+    val maxWeight: Double?,
+)
+
+/**
+ * 種目別推移の表示期間。選んだ月の月末から数えて何ヶ月分を出すか。
+ */
+enum class ExerciseTrendPeriod(val label: String, val months: Long) {
+    ONE_MONTH("1ヶ月", 1),
+    THREE_MONTHS("3ヶ月", 3),
+    SIX_MONTHS("6ヶ月", 6),
+    ONE_YEAR("1年", 12),
+    ;
+
+    /** 基準月 [endMonth] を最後の月として含む期間（初日, 末日）。例: 2026年9月・1年 → 2025-10-01〜2026-09-30 */
+    fun rangeEndingAt(endMonth: YearMonth): Pair<LocalDate, LocalDate> =
+        endMonth.minusMonths(months - 1).atDay(1) to endMonth.atEndOfMonth()
+}
+
+/**
+ * 1種目の記録を日ごとにまとめて推移にする。日付の古い順。
+ * 同じ日に同じ種目を複数回記録していても1点にまとめる（カレンダーのカードと同じ単位）。
+ * 日付が読めない記録は位置を決められないので除く。
+ */
+fun exerciseTrendOf(records: List<StrengthRecordWithSets>, ex: String): List<ExerciseTrendPoint> = records
+    .filter { it.record.ex.trim() == ex.trim() }
+    .groupBy { it.record.date }
+    .mapNotNull { (date, ofDay) ->
+        val day = runCatching { LocalDate.parse(date) }.getOrNull() ?: return@mapNotNull null
+        val hasVolume = ofDay.any { r -> r.sets.any { it.weight != null && it.reps != null } }
+        ExerciseTrendPoint(
+            date = day,
+            volume = if (hasVolume) volumeOf(ofDay) else null,
+            oneRepMax = oneRepMaxOf(ofDay),
+            maxWeight = maxWeightOf(ofDay),
+        )
+    }
+    .sortedBy { it.date }

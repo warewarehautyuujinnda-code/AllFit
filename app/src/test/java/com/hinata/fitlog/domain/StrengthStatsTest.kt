@@ -4,6 +4,7 @@ import com.hinata.fitlog.data.entity.StrengthEntity
 import com.hinata.fitlog.data.entity.StrengthRecordWithSets
 import com.hinata.fitlog.data.entity.StrengthSetEntity
 import java.time.LocalDate
+import java.time.YearMonth
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -324,5 +325,58 @@ class StrengthStatsTest {
         val leg = exercisesOf(BodyPart.LEG, records)
         assertEquals(listOf("スクワット"), leg)
         assertTrue("レッグプレス" !in leg)
+    }
+
+    // ---- 種目別推移 ----
+
+    @Test
+    fun `最大負荷は回数に関わらず一番重い重量`() {
+        val records = listOf(
+            record(id = "a", sets = listOf(s(60.0, 10), s(80.0, 1))),
+            record(id = "b", sets = listOf(s(weight = 85.0))),
+        )
+        assertEquals(85.0, maxWeightOf(records)!!, 1e-9)
+        assertNull(maxWeightOf(listOf(record(sets = listOf(s(reps = 10))))))
+    }
+
+    @Test
+    fun `推移は指定した種目だけを日ごとにまとめて古い順に並べる`() {
+        val records = listOf(
+            record(id = "a", date = "2026-09-10", sets = listOf(s(60.0, 10))),
+            record(id = "b", date = "2026-09-01", sets = listOf(s(50.0, 10))),
+            record(id = "c", date = "2026-09-10", sets = listOf(s(70.0, 5))),
+            record(id = "d", date = "2026-09-05", ex = "スクワット", sets = listOf(s(100.0, 5))),
+        )
+        val trend = exerciseTrendOf(records, "ベンチプレス")
+        assertEquals(
+            listOf(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10)),
+            trend.map { it.date },
+        )
+        val day = trend[1]
+        assertEquals(600.0 + 350.0, day.volume!!, 1e-9)
+        // 60×(1+10/30)=80.0 と 70×(1+5/30)≒81.67 の大きい方
+        assertEquals(70.0 * (1 + 5 / 30.0), day.oneRepMax!!, 1e-9)
+        assertEquals(70.0, day.maxWeight!!, 1e-9)
+    }
+
+    @Test
+    fun `重量と回数がそろったセットが無い日はボリュームを0ではなくnullにする`() {
+        val records = listOf(record(date = "2026-09-01", sets = listOf(s(reps = 20))))
+        val point = exerciseTrendOf(records, "ベンチプレス").single()
+        assertNull(point.volume)
+        assertNull(point.oneRepMax)
+        assertNull(point.maxWeight)
+    }
+
+    @Test
+    fun `推移の期間は基準月を最後の月として含む`() {
+        assertEquals(
+            LocalDate.of(2025, 10, 1) to LocalDate.of(2026, 9, 30),
+            ExerciseTrendPeriod.ONE_YEAR.rangeEndingAt(YearMonth.of(2026, 9)),
+        )
+        assertEquals(
+            LocalDate.of(2026, 2, 1) to LocalDate.of(2026, 2, 28),
+            ExerciseTrendPeriod.ONE_MONTH.rangeEndingAt(YearMonth.of(2026, 2)),
+        )
     }
 }
