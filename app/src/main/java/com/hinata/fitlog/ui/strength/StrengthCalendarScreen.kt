@@ -1,6 +1,8 @@
 package com.hinata.fitlog.ui.strength
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,14 +18,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -38,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,6 +69,7 @@ fun StrengthCalendarScreen(
     snackbarHostState: SnackbarHostState,
     onSelectDate: (LocalDate) -> Unit,
     onAdd: () -> Unit,
+    onShowTrend: (String?) -> Unit,
     onDeleteRecords: (List<String>) -> Unit,
 ) {
     // 日付を選び直すたびにその月へ合わせる。前後の月めくりは選択日を変えないので状態が残る
@@ -95,36 +103,51 @@ fun StrengthCalendarScreen(
                 )
             }
 
-            // 追加ボタンは浮かせず見出しの行に置く。カレンダーが画面の大半を占めるため
-            // 記録カードは常に最下部に来てしまい、FAB にすると最右列の値が隠れて読めない
+            // 追加ボタンは浮かせず見出しの下に置く。カレンダーが画面の大半を占めるため
+            // 記録カードは常に最下部に来てしまい、FAB にすると最右列の値が隠れて読めない。
+            // 「種目別推移」と2つ並べると日付と同じ行には収まらないので、ボタンは次の行に分ける
             item {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "${selectedDate.year}年${selectedDate.monthValue}月" +
-                                "${selectedDate.dayOfMonth}日(${japaneseWeekday(selectedDate)})",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            "総ボリューム ${formatGrouped(day.totalVolume)} kg",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 2.dp),
-                        )
-                    }
-                    FilledTonalButton(onClick = onAdd) {
-                        Icon(
-                            Icons.Filled.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Text("記録する", modifier = Modifier.padding(start = 4.dp))
+                    Text(
+                        "${selectedDate.year}年${selectedDate.monthValue}月" +
+                            "${selectedDate.dayOfMonth}日(${japaneseWeekday(selectedDate)})",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        "総ボリューム ${formatGrouped(day.totalVolume)} kg",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = { onShowTrend(null) },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ShowChart,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text("種目別推移", modifier = Modifier.padding(start = 4.dp))
+                        }
+                        FilledTonalButton(onClick = onAdd, modifier = Modifier.weight(1f)) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text("記録する", modifier = Modifier.padding(start = 4.dp))
+                        }
                     }
                 }
             }
@@ -144,6 +167,7 @@ fun StrengthCalendarScreen(
                         dateLabel = selectedDate.toString(),
                         onDelete = { onDeleteRecords(stats.recordIds) },
                         onClick = { detailExercise = stats },
+                        onLongClick = { onShowTrend(stats.ex) },
                         modifier = Modifier.padding(top = 12.dp),
                     )
                 }
@@ -162,19 +186,34 @@ fun StrengthCalendarScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ExerciseStatsCard(
     stats: ExerciseStats,
     dateLabel: String,
     onDelete: () -> Unit,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showConfirm by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
 
-    // カード全体をタップで個々の記録の詳細を開く。右端の削除ボタンは自身の領域で
-    // タップを消費するため、このクリックとは競合しない
-    Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
+    // カード全体をタップで個々の記録の詳細を、長押しでその種目の推移を開く。
+    // 右端の削除ボタンは自身の領域でタップを消費するため、これらとは競合しない。
+    // Card(onClick) は長押しを受けられないので、角丸で切り抜いてから combinedClickable を付ける
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(CardDefaults.shape)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                },
+            ),
+    ) {
         Column(modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(

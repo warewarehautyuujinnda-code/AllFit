@@ -19,13 +19,17 @@ import kotlinx.coroutines.launch
 
 /**
  * 筋トレタブ（FR-02）の入り口。
- * カレンダー → 種目選択 → セット入力 の3画面をタブ内の状態で切り替える。
+ * カレンダー → 種目選択 → セット入力 の3画面と、カレンダーから開く種目別推移を
+ * タブ内の状態で切り替える。
  * 下部ナビゲーションの構成は変えたくないため、ここでは入れ子の NavHost を作らず内部状態で持つ。
  */
 private sealed interface StrengthRoute {
     data object Calendar : StrengthRoute
     data object Picker : StrengthRoute
     data class Input(val ref: ExerciseRef) : StrengthRoute
+
+    /** 種目別推移。[ex] が null なら「種目別推移」ボタンから来たことを表し、よくやる種目を出す */
+    data class Trend(val ex: String?) : StrengthRoute
 }
 
 @Composable
@@ -64,6 +68,7 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
             snackbarHostState = snackbarHostState,
             onSelectDate = { selectedDate = it.toString() },
             onAdd = { route = StrengthRoute.Picker },
+            onShowTrend = { ex -> route = StrengthRoute.Trend(ex) },
             onDeleteRecords = { ids -> viewModel.deleteRecords(ids) },
         )
 
@@ -80,6 +85,13 @@ fun StrengthScreen(viewModel: StrengthViewModel = viewModel()) {
                 viewModel.updateExercise(currentName, newName, description, part)
             },
             onHideExercise = { name, part -> viewModel.hideExercise(name, part) },
+        )
+
+        is StrengthRoute.Trend -> ExerciseTrendScreen(
+            records = items,
+            today = today,
+            initialExercise = current.ex,
+            onBack = { route = StrengthRoute.Calendar },
         )
 
         is StrengthRoute.Input -> SetInputScreen(
