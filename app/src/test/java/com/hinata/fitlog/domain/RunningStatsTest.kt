@@ -131,4 +131,22 @@ class RunningStatsTest {
         val r = RunningEntity(id = "r", date = "2026-08-20", dist = 5.2, min = null)
         assertNull(RunningMetric.SPEED.valueFor(r))
     }
+
+    @Test
+    fun `日付ごとの距離は同じ日の記録を合算する`() {
+        val day = listOf(
+            RunningEntity(id = "a", date = "2026-09-28", dist = 3.0),
+            RunningEntity(id = "b", date = "2026-09-28", dist = 2.5),
+            RunningEntity(id = "c", date = "2026-09-26", dist = 10.0),
+        )
+        assertEquals(
+            mapOf("2026-09-28" to 5.5, "2026-09-26" to 10.0),
+            runningDistanceByDate(day),
+        )
+    }
+
+    @Test
+    fun `記録が無ければ日付ごとの距離は空`() {
+        assertEquals(emptyMap<String, Double>(), runningDistanceByDate(emptyList()))
+    }
 }

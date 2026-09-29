@@ -87,3 +87,10 @@ fun runningTrendOf(
  */
 fun monthlyTotalDistance(records: List<RunningEntity>, yearMonth: String): Double =
     records.filter { it.date.startsWith(yearMonth) }.sumOf { it.dist }
+
+/**
+ * 週カレンダー用の、日付(yyyy-MM-dd) → その日に走った合計距離(km)。
+ * 1日に複数回走った日は合算する。記録の無い日はキー自体を持たない。
+ */
+fun runningDistanceByDate(records: List<RunningEntity>): Map<String, Double> =
+    records.groupBy { it.date }.mapValues { (_, day) -> day.sumOf { it.dist } }

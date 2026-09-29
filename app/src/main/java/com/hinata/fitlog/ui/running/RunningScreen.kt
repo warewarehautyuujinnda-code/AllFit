@@ -43,6 +43,7 @@ import com.hinata.fitlog.running.RunTrackState
 import com.hinata.fitlog.running.RunTrackingController
 import com.hinata.fitlog.running.hasTrackingPermissions
 import com.hinata.fitlog.running.trackingPermissions
+import java.time.LocalDate
 import kotlinx.coroutines.launch
 
 /**
@@ -153,6 +154,12 @@ private fun RunningMainScreen(
                 Text("ランニング", style = MaterialTheme.typography.titleLarge)
                 TextButton(onClick = onOpenList) { Text("記録") }
             }
+
+            RunningWeekCalendar(
+                records = items,
+                today = LocalDate.now(),
+                modifier = Modifier.padding(top = 12.dp),
+            )
 
             RunningChart(
                 trend = trend,
